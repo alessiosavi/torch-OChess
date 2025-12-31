@@ -7,9 +7,10 @@ Provides:
     - Metrics: Training metrics tracking
 """
 
-from ochess.training.trainer import Trainer, TrainingConfig
-from ochess.training.callbacks import EarlyStopping, ModelCheckpoint, MetricsLogger
+from ochess.training.callbacks import (EarlyStopping, MetricsLogger,
+                                       ModelCheckpoint)
 from ochess.training.metrics import AccuracyMetric, compute_move_accuracy
+from ochess.training.trainer import Trainer, TrainingConfig
 
 __all__ = [
     "Trainer",

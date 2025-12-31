@@ -8,14 +8,15 @@ Key features:
     - Automatic train/val splitting
 """
 
-import torch
-from torch.utils.data import Dataset, DataLoader
-import pandas as pd
-import numpy as np
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 import json
 import logging
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+import numpy as np
+import pandas as pd
+import torch
+from torch.utils.data import DataLoader, Dataset
 
 from ochess.data.fen_parser import FenParser
 from ochess.data.move_encoder import MoveEncoder
@@ -43,7 +44,7 @@ class ChessDataset(Dataset):
         data_path: str,
         sequence_length: int = 5,
         cache_dir: Optional[str] = None,
-        use_cache: bool = True
+        use_cache: bool = True,
     ):
         """
         Initialize chess dataset.
@@ -90,7 +91,7 @@ class ChessDataset(Dataset):
         logger.info(f"Loaded {len(df)} positions from parquet")
 
         # Group by game_id if available
-        if 'game_id' in df.columns:
+        if "game_id" in df.columns:
             self._preprocess_grouped(df)
         else:
             self._preprocess_ungrouped(df)
@@ -99,13 +100,13 @@ class ChessDataset(Dataset):
         """Preprocess data grouped by game."""
         sequences = []
 
-        for game_id, game_df in df.groupby('game_id'):
+        for game_id, game_df in df.groupby("game_id"):
             # Sort by move number
-            game_df = game_df.sort_values('move_number')
+            game_df = game_df.sort_values("move_number")
 
             # Create sliding windows
             for i in range(len(game_df) - self.sequence_length + 1):
-                window = game_df.iloc[i:i + self.sequence_length]
+                window = game_df.iloc[i : i + self.sequence_length]
                 seq = self._process_window(window)
                 if seq is not None:
                     sequences.append(seq)
@@ -131,9 +132,9 @@ class ChessDataset(Dataset):
             colors = []
 
             for _, row in window.iterrows():
-                board = self.fen_parser.to_tensor(row['fen'])
+                board = self.fen_parser.to_tensor(row["fen"])
                 boards.append(board)
-                colors.append(0 if self.fen_parser.is_white_to_move(row['fen']) else 1)
+                colors.append(0 if self.fen_parser.is_white_to_move(row["fen"]) else 1)
 
             boards = torch.stack(boards)  # [seq_len, 8, 8]
             colors = torch.tensor(colors, dtype=torch.long)
@@ -142,26 +143,26 @@ class ChessDataset(Dataset):
             last_row = window.iloc[-1]
 
             # Target move
-            target_move = self.move_encoder.encode(last_row['best_move_uci'])
+            target_move = self.move_encoder.encode(last_row["best_move_uci"])
 
             # Score (already normalized in data generation)
-            score = last_row['score_normalized']
+            score = last_row["score_normalized"]
 
             # Capture flag
-            is_capture = int(last_row['is_capture'])
+            is_capture = int(last_row["is_capture"])
 
             # Outcome (if available)
             outcome = None
-            if 'outcome' in last_row and pd.notna(last_row.get('outcome')):
-                outcome = int(last_row['outcome'])
+            if "outcome" in last_row and pd.notna(last_row.get("outcome")):
+                outcome = int(last_row["outcome"])
 
             return {
-                'boards': boards,
-                'colors': colors,
-                'target_move': target_move,
-                'score': score,
-                'is_capture': is_capture,
-                'outcome': outcome
+                "boards": boards,
+                "colors": colors,
+                "target_move": target_move,
+                "score": score,
+                "is_capture": is_capture,
+                "outcome": outcome,
             }
 
         except Exception as e:
@@ -171,28 +172,28 @@ class ChessDataset(Dataset):
     def _process_single(self, row: pd.Series) -> Optional[Dict]:
         """Process a single position (replicated for sequence)."""
         try:
-            board = self.fen_parser.to_tensor(row['fen'])
-            color = 0 if self.fen_parser.is_white_to_move(row['fen']) else 1
+            board = self.fen_parser.to_tensor(row["fen"])
+            color = 0 if self.fen_parser.is_white_to_move(row["fen"]) else 1
 
             # Replicate for sequence
             boards = board.unsqueeze(0).expand(self.sequence_length, -1, -1).clone()
             colors = torch.tensor([color] * self.sequence_length, dtype=torch.long)
 
-            target_move = self.move_encoder.encode(row['best_move_uci'])
-            score = row['score_normalized']
-            is_capture = int(row['is_capture'])
+            target_move = self.move_encoder.encode(row["best_move_uci"])
+            score = row["score_normalized"]
+            is_capture = int(row["is_capture"])
 
             outcome = None
-            if 'outcome' in row and pd.notna(row.get('outcome')):
-                outcome = int(row['outcome'])
+            if "outcome" in row and pd.notna(row.get("outcome")):
+                outcome = int(row["outcome"])
 
             return {
-                'boards': boards,
-                'colors': colors,
-                'target_move': target_move,
-                'score': score,
-                'is_capture': is_capture,
-                'outcome': outcome
+                "boards": boards,
+                "colors": colors,
+                "target_move": target_move,
+                "score": score,
+                "is_capture": is_capture,
+                "outcome": outcome,
             }
 
         except Exception as e:
@@ -204,16 +205,22 @@ class ChessDataset(Dataset):
         if not sequences:
             raise ValueError("No valid sequences found in data")
 
-        self.boards = torch.stack([s['boards'] for s in sequences])
-        self.colors = torch.stack([s['colors'] for s in sequences])
-        self.target_moves = torch.tensor([s['target_move'] for s in sequences], dtype=torch.long)
-        self.scores = torch.tensor([s['score'] for s in sequences], dtype=torch.float32)
-        self.is_captures = torch.tensor([s['is_capture'] for s in sequences], dtype=torch.long)
+        self.boards = torch.stack([s["boards"] for s in sequences])
+        self.colors = torch.stack([s["colors"] for s in sequences])
+        self.target_moves = torch.tensor(
+            [s["target_move"] for s in sequences], dtype=torch.long
+        )
+        self.scores = torch.tensor([s["score"] for s in sequences], dtype=torch.float32)
+        self.is_captures = torch.tensor(
+            [s["is_capture"] for s in sequences], dtype=torch.long
+        )
 
         # Handle optional outcomes
-        has_outcomes = all(s['outcome'] is not None for s in sequences)
+        has_outcomes = all(s["outcome"] is not None for s in sequences)
         if has_outcomes:
-            self.outcomes = torch.tensor([s['outcome'] for s in sequences], dtype=torch.long)
+            self.outcomes = torch.tensor(
+                [s["outcome"] for s in sequences], dtype=torch.long
+            )
         else:
             self.outcomes = None
 
@@ -223,14 +230,14 @@ class ChessDataset(Dataset):
     def _save_cache(self):
         """Save preprocessed data to disk."""
         data = {
-            'boards': self.boards,
-            'colors': self.colors,
-            'target_moves': self.target_moves,
-            'scores': self.scores,
-            'is_captures': self.is_captures,
-            'outcomes': self.outcomes,
-            'length': self.length,
-            'sequence_length': self.sequence_length
+            "boards": self.boards,
+            "colors": self.colors,
+            "target_moves": self.target_moves,
+            "scores": self.scores,
+            "is_captures": self.is_captures,
+            "outcomes": self.outcomes,
+            "length": self.length,
+            "sequence_length": self.sequence_length,
         }
         torch.save(data, self.cache_path)
         logger.info(f"Saved cache to {self.cache_path}")
@@ -238,15 +245,15 @@ class ChessDataset(Dataset):
     def _load_cache(self):
         """Load preprocessed data from disk."""
         data = torch.load(self.cache_path)
-        self.boards = data['boards']
-        self.colors = data['colors']
-        self.target_moves = data['target_moves']
-        self.scores = data['scores']
-        self.is_captures = data['is_captures']
-        self.outcomes = data['outcomes']
-        self.length = data['length']
+        self.boards = data["boards"]
+        self.colors = data["colors"]
+        self.target_moves = data["target_moves"]
+        self.scores = data["scores"]
+        self.is_captures = data["is_captures"]
+        self.outcomes = data["outcomes"]
+        self.length = data["length"]
 
-        cached_seq_len = data.get('sequence_length', self.sequence_length)
+        cached_seq_len = data.get("sequence_length", self.sequence_length)
         if cached_seq_len != self.sequence_length:
             logger.warning(
                 f"Cache sequence length ({cached_seq_len}) differs from "
@@ -271,15 +278,15 @@ class ChessDataset(Dataset):
             - 'outcome': scalar (optional)
         """
         item = {
-            'boards': self.boards[idx],
-            'colors': self.colors[idx],
-            'target_move': self.target_moves[idx],
-            'score': self.scores[idx],
-            'is_capture': self.is_captures[idx]
+            "boards": self.boards[idx],
+            "colors": self.colors[idx],
+            "target_move": self.target_moves[idx],
+            "score": self.scores[idx],
+            "is_capture": self.is_captures[idx],
         }
 
         if self.outcomes is not None:
-            item['outcome'] = self.outcomes[idx]
+            item["outcome"] = self.outcomes[idx]
 
         return item
 
@@ -290,7 +297,7 @@ def create_dataloader(
     shuffle: bool = True,
     num_workers: int = 4,
     pin_memory: bool = True,
-    drop_last: bool = True
+    drop_last: bool = True,
 ) -> DataLoader:
     """
     Create DataLoader for chess dataset.
@@ -313,14 +320,12 @@ def create_dataloader(
         num_workers=num_workers,
         pin_memory=pin_memory,
         drop_last=drop_last,
-        persistent_workers=num_workers > 0
+        persistent_workers=num_workers > 0,
     )
 
 
 def train_val_split(
-    dataset: ChessDataset,
-    val_ratio: float = 0.1,
-    seed: int = 42
+    dataset: ChessDataset, val_ratio: float = 0.1, seed: int = 42
 ) -> Tuple[Dataset, Dataset]:
     """
     Split dataset into train and validation sets.

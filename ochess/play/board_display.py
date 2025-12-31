@@ -2,29 +2,34 @@
 Board display utilities for terminal.
 """
 
-import chess
 from typing import Optional
+
+import chess
 
 # ASCII piece symbols
 PIECE_SYMBOLS = {
-    chess.PAWN: 'P', chess.KNIGHT: 'N', chess.BISHOP: 'B',
-    chess.ROOK: 'R', chess.QUEEN: 'Q', chess.KING: 'K'
+    chess.PAWN: "P",
+    chess.KNIGHT: "N",
+    chess.BISHOP: "B",
+    chess.ROOK: "R",
+    chess.QUEEN: "Q",
+    chess.KING: "K",
 }
 
 # Unicode piece symbols
 UNICODE_PIECES = {
-    (chess.PAWN, chess.WHITE): '\u2659',
-    (chess.KNIGHT, chess.WHITE): '\u2658',
-    (chess.BISHOP, chess.WHITE): '\u2657',
-    (chess.ROOK, chess.WHITE): '\u2656',
-    (chess.QUEEN, chess.WHITE): '\u2655',
-    (chess.KING, chess.WHITE): '\u2654',
-    (chess.PAWN, chess.BLACK): '\u265F',
-    (chess.KNIGHT, chess.BLACK): '\u265E',
-    (chess.BISHOP, chess.BLACK): '\u265D',
-    (chess.ROOK, chess.BLACK): '\u265C',
-    (chess.QUEEN, chess.BLACK): '\u265B',
-    (chess.KING, chess.BLACK): '\u265A',
+    (chess.PAWN, chess.WHITE): "\u2659",
+    (chess.KNIGHT, chess.WHITE): "\u2658",
+    (chess.BISHOP, chess.WHITE): "\u2657",
+    (chess.ROOK, chess.WHITE): "\u2656",
+    (chess.QUEEN, chess.WHITE): "\u2655",
+    (chess.KING, chess.WHITE): "\u2654",
+    (chess.PAWN, chess.BLACK): "\u265f",
+    (chess.KNIGHT, chess.BLACK): "\u265e",
+    (chess.BISHOP, chess.BLACK): "\u265d",
+    (chess.ROOK, chess.BLACK): "\u265c",
+    (chess.QUEEN, chess.BLACK): "\u265b",
+    (chess.KING, chess.BLACK): "\u265a",
 }
 
 
@@ -32,7 +37,7 @@ def display_board(
     board: chess.Board,
     flip: bool = False,
     use_unicode: bool = False,
-    highlight_squares: Optional[list] = None
+    highlight_squares: Optional[list] = None,
 ) -> str:
     """
     Create a string representation of the board.
@@ -65,13 +70,11 @@ def display_board(
             piece = board.piece_at(square)
 
             if piece is None:
-                symbol = '.'
+                symbol = "."
             elif use_unicode:
-                symbol = UNICODE_PIECES.get(
-                    (piece.piece_type, piece.color), '?'
-                )
+                symbol = UNICODE_PIECES.get((piece.piece_type, piece.color), "?")
             else:
-                symbol = PIECE_SYMBOLS.get(piece.piece_type, '?')
+                symbol = PIECE_SYMBOLS.get(piece.piece_type, "?")
                 if piece.color == chess.BLACK:
                     symbol = symbol.lower()
 

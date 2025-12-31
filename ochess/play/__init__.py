@@ -8,10 +8,10 @@ Provides:
     - BoardDisplay: Board visualization in terminal
 """
 
-from ochess.play.engine import ChessEngine
-from ochess.play.cli_interface import CLIInterface
-from ochess.play.gui_interface import GUIInterface
 from ochess.play.board_display import display_board, format_board
+from ochess.play.cli_interface import CLIInterface
+from ochess.play.engine import ChessEngine
+from ochess.play.gui_interface import GUIInterface
 
 __all__ = [
     "ChessEngine",

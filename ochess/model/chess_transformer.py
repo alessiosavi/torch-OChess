@@ -12,19 +12,22 @@ Key features:
 - Same multi-task outputs as ResNet model
 """
 
+from dataclasses import dataclass
+from typing import Dict, Optional
+
 import torch
 import torch.nn as nn
-from typing import Dict, Optional
-from dataclasses import dataclass
 
-from ochess.model.components.embeddings import PieceEmbedding, ColorEmbedding
 from ochess.model.components.attention import TransformerEncoder
-from ochess.model.components.heads import MoveHead, ScoreHead, CaptureHead, OutcomeHead
+from ochess.model.components.embeddings import ColorEmbedding, PieceEmbedding
+from ochess.model.components.heads import (CaptureHead, MoveHead, OutcomeHead,
+                                           ScoreHead)
 
 
 @dataclass
 class ChessTransformerConfig:
     """Configuration for ChessTransformer."""
+
     # Embeddings
     embed_dim: int = 256
 
@@ -104,7 +107,7 @@ class ChessTransformer(nn.Module):
             num_layers=config.num_layers,
             num_heads=config.num_heads,
             mlp_ratio=config.mlp_ratio,
-            dropout=config.dropout
+            dropout=config.dropout,
         )
 
         # Output projections (transformer output -> spatial features for heads)
@@ -143,7 +146,7 @@ class ChessTransformer(nn.Module):
         self,
         board_tensor: torch.Tensor,
         color_to_move: torch.Tensor,
-        return_features: bool = False
+        return_features: bool = False,
     ) -> Dict[str, torch.Tensor]:
         """
         Forward pass.
@@ -170,7 +173,7 @@ class ChessTransformer(nn.Module):
         # Get piece embeddings and flatten spatial dimensions
         # [B, T, 8, 8] -> [B, T, 64] -> [B, T, 64, embed_dim]
         board_flat = board_tensor.view(B, T, -1)  # [B, T, 64]
-        piece_emb = self.piece_embed(board_flat)   # [B, T, 64, embed_dim]
+        piece_emb = self.piece_embed(board_flat)  # [B, T, 64, embed_dim]
 
         # Add position embeddings
         piece_emb = piece_emb + self.pos_embed  # Broadcasting [1, 64, embed_dim]
@@ -217,28 +220,26 @@ class ChessTransformer(nn.Module):
         outcome = self.outcome_out(cls_out)
 
         outputs = {
-            'move_logits': move_logits,
-            'score': score,
-            'capture': capture,
-            'outcome': outcome
+            "move_logits": move_logits,
+            "score": score,
+            "capture": capture,
+            "outcome": outcome,
         }
 
         if return_features:
-            outputs['features'] = cls_out
-            outputs['board_features'] = board_tokens
+            outputs["features"] = cls_out
+            outputs["board_features"] = board_tokens
 
         return outputs
 
     def _flip_boards_for_black(
-        self,
-        boards: torch.Tensor,
-        colors: torch.Tensor
+        self, boards: torch.Tensor, colors: torch.Tensor
     ) -> torch.Tensor:
         """Flip boards when Black to move."""
         B, T, H, W = boards.shape
         result = boards.clone()
 
-        black_mask = (colors == 1)
+        black_mask = colors == 1
 
         for b in range(B):
             for t in range(T):
@@ -258,30 +259,25 @@ class ChessTransformer(nn.Module):
         self,
         board_tensor: torch.Tensor,
         color_to_move: torch.Tensor,
-        temperature: float = 1.0
+        temperature: float = 1.0,
     ) -> torch.Tensor:
         """Get move probabilities."""
         with torch.no_grad():
             outputs = self.forward(board_tensor, color_to_move)
-            logits = outputs['move_logits']
+            logits = outputs["move_logits"]
             if temperature != 1.0:
                 logits = logits / temperature
             return torch.softmax(logits, dim=-1)
 
     def get_best_move(
-        self,
-        board_tensor: torch.Tensor,
-        color_to_move: torch.Tensor
+        self, board_tensor: torch.Tensor, color_to_move: torch.Tensor
     ) -> torch.Tensor:
         """Get best move index."""
         probs = self.predict_move(board_tensor, color_to_move, temperature=0.01)
         return torch.argmax(probs, dim=-1)
 
     def get_attention_weights(
-        self,
-        board_tensor: torch.Tensor,
-        color_to_move: torch.Tensor,
-        layer: int = -1
+        self, board_tensor: torch.Tensor, color_to_move: torch.Tensor, layer: int = -1
     ) -> torch.Tensor:
         """
         Get attention weights for visualization.

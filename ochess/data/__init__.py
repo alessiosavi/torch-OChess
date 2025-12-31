@@ -8,10 +8,10 @@ Provides:
     - PyTorch Dataset with efficient caching
 """
 
+from ochess.data.dataset import ChessDataset, create_dataloader
 from ochess.data.fen_parser import FenParser
 from ochess.data.move_encoder import MoveEncoder
 from ochess.data.score_encoder import ScoreEncoder
-from ochess.data.dataset import ChessDataset, create_dataloader
 
 __all__ = [
     "FenParser",

@@ -7,11 +7,12 @@ Provides:
     - TransformerBlock: Full transformer encoder block
 """
 
+import math
+from typing import Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
-from typing import Optional
 
 
 class SelfAttention(nn.Module):
@@ -22,12 +23,7 @@ class SelfAttention(nn.Module):
     feature map, allowing the model to learn long-range dependencies.
     """
 
-    def __init__(
-        self,
-        channels: int,
-        num_heads: int = 8,
-        dropout: float = 0.0
-    ):
+    def __init__(self, channels: int, num_heads: int = 8, dropout: float = 0.0):
         """
         Initialize self-attention.
 
@@ -100,7 +96,7 @@ class MultiHeadAttention(nn.Module):
         embed_dim: int,
         num_heads: int = 8,
         dropout: float = 0.0,
-        bias: bool = True
+        bias: bool = True,
     ):
         """
         Initialize multi-head attention.
@@ -132,7 +128,7 @@ class MultiHeadAttention(nn.Module):
         query: torch.Tensor,
         key: Optional[torch.Tensor] = None,
         value: Optional[torch.Tensor] = None,
-        mask: Optional[torch.Tensor] = None
+        mask: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """
         Apply multi-head attention.
@@ -167,7 +163,7 @@ class MultiHeadAttention(nn.Module):
         attn = (q @ k.transpose(-2, -1)) / self.scale
 
         if mask is not None:
-            attn = attn.masked_fill(mask == 0, float('-inf'))
+            attn = attn.masked_fill(mask == 0, float("-inf"))
 
         attn = F.softmax(attn, dim=-1)
         attn = self.dropout(attn)
@@ -198,7 +194,7 @@ class TransformerBlock(nn.Module):
         num_heads: int = 8,
         mlp_ratio: float = 4.0,
         dropout: float = 0.0,
-        attention_dropout: float = 0.0
+        attention_dropout: float = 0.0,
     ):
         """
         Initialize transformer block.
@@ -214,9 +210,7 @@ class TransformerBlock(nn.Module):
 
         self.norm1 = nn.LayerNorm(embed_dim)
         self.attn = MultiHeadAttention(
-            embed_dim,
-            num_heads=num_heads,
-            dropout=attention_dropout
+            embed_dim, num_heads=num_heads, dropout=attention_dropout
         )
 
         self.norm2 = nn.LayerNorm(embed_dim)
@@ -226,13 +220,11 @@ class TransformerBlock(nn.Module):
             nn.GELU(),
             nn.Dropout(dropout),
             nn.Linear(mlp_hidden, embed_dim),
-            nn.Dropout(dropout)
+            nn.Dropout(dropout),
         )
 
     def forward(
-        self,
-        x: torch.Tensor,
-        mask: Optional[torch.Tensor] = None
+        self, x: torch.Tensor, mask: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         """
         Forward pass.
@@ -264,7 +256,7 @@ class TransformerEncoder(nn.Module):
         num_layers: int,
         num_heads: int = 8,
         mlp_ratio: float = 4.0,
-        dropout: float = 0.0
+        dropout: float = 0.0,
     ):
         """
         Initialize transformer encoder.
@@ -278,22 +270,19 @@ class TransformerEncoder(nn.Module):
         """
         super().__init__()
 
-        self.layers = nn.ModuleList([
-            TransformerBlock(
-                embed_dim,
-                num_heads=num_heads,
-                mlp_ratio=mlp_ratio,
-                dropout=dropout
-            )
-            for _ in range(num_layers)
-        ])
+        self.layers = nn.ModuleList(
+            [
+                TransformerBlock(
+                    embed_dim, num_heads=num_heads, mlp_ratio=mlp_ratio, dropout=dropout
+                )
+                for _ in range(num_layers)
+            ]
+        )
 
         self.norm = nn.LayerNorm(embed_dim)
 
     def forward(
-        self,
-        x: torch.Tensor,
-        mask: Optional[torch.Tensor] = None
+        self, x: torch.Tensor, mask: Optional[torch.Tensor] = None
     ) -> torch.Tensor:
         """
         Forward pass through all layers.
@@ -330,10 +319,7 @@ class SpatialAttention(nn.Module):
 
         padding = kernel_size // 2
         self.conv = nn.Conv2d(
-            2, 1,
-            kernel_size=kernel_size,
-            padding=padding,
-            bias=False
+            2, 1, kernel_size=kernel_size, padding=padding, bias=False
         )
         self.sigmoid = nn.Sigmoid()
 

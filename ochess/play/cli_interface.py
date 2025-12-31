@@ -2,12 +2,13 @@
 Command-line interface for playing against the neural network.
 """
 
-import chess
-import torch.nn as nn
 from typing import Optional
 
-from ochess.play.engine import ChessEngine
+import chess
+import torch.nn as nn
+
 from ochess.play.board_display import display_board, format_game_state
+from ochess.play.engine import ChessEngine
 
 
 class CLIInterface:
@@ -15,11 +16,7 @@ class CLIInterface:
     Command-line interface for playing chess against the model.
     """
 
-    def __init__(
-        self,
-        model: nn.Module,
-        device: str = "cuda"
-    ):
+    def __init__(self, model: nn.Module, device: str = "cuda"):
         """
         Initialize CLI interface.
 
@@ -96,10 +93,10 @@ class CLIInterface:
             try:
                 user_input = input("Your move: ").strip().lower()
 
-                if user_input == 'quit':
+                if user_input == "quit":
                     return None
 
-                if user_input == 'undo':
+                if user_input == "undo":
                     if len(self.board.move_stack) >= 2:
                         self.board.pop()
                         self.board.pop()
@@ -109,14 +106,14 @@ class CLIInterface:
                         print("Nothing to undo.")
                     continue
 
-                if user_input == 'legal':
+                if user_input == "legal":
                     moves = [self.board.san(m) for m in self.board.legal_moves]
                     print("Legal moves:", ", ".join(moves[:20]))
                     if len(moves) > 20:
                         print(f"  ... and {len(moves) - 20} more")
                     continue
 
-                if user_input == 'eval':
+                if user_input == "eval":
                     score = self.engine.get_evaluation(self.board)
                     side = "White" if self.board.turn else "Black"
                     print(f"Model evaluation: {score:.2f} ({side}'s perspective)")
@@ -175,7 +172,7 @@ def play_game(model_path: str, device: str = "cuda", human_white: bool = True):
 
     # Load model
     model = torch.load(model_path, map_location=device)
-    if hasattr(model, 'eval'):
+    if hasattr(model, "eval"):
         model.eval()
 
     # Start game

@@ -12,10 +12,11 @@ Tensor Format:
     0: empty, 1-6: white pieces (P,N,B,R,Q,K), 7-12: black pieces (p,n,b,r,q,k)
 """
 
-import torch
-import numpy as np
-from typing import Dict, Tuple, Optional
+from typing import Dict, Optional, Tuple
+
 import chess
+import numpy as np
+import torch
 
 
 class FenParser:
@@ -36,16 +37,16 @@ class FenParser:
 
     # Piece to index mapping
     PIECE_TO_INDEX: Dict[str, int] = {
-        " ": 0,   # Empty
-        "P": 1,   # White pawn
-        "N": 2,   # White knight
-        "B": 3,   # White bishop
-        "R": 4,   # White rook
-        "Q": 5,   # White queen
-        "K": 6,   # White king
-        "p": 7,   # Black pawn
-        "n": 8,   # Black knight
-        "b": 9,   # Black bishop
+        " ": 0,  # Empty
+        "P": 1,  # White pawn
+        "N": 2,  # White knight
+        "B": 3,  # White bishop
+        "R": 4,  # White rook
+        "Q": 5,  # White queen
+        "K": 6,  # White king
+        "p": 7,  # Black pawn
+        "n": 8,  # Black knight
+        "b": 9,  # Black bishop
         "r": 10,  # Black rook
         "q": 11,  # Black queen
         "k": 12,  # Black king
@@ -57,15 +58,35 @@ class FenParser:
     # Piece symbols for display
     PIECE_SYMBOLS: Dict[int, str] = {
         0: ".",
-        1: "P", 2: "N", 3: "B", 4: "R", 5: "Q", 6: "K",
-        7: "p", 8: "n", 9: "b", 10: "r", 11: "q", 12: "k",
+        1: "P",
+        2: "N",
+        3: "B",
+        4: "R",
+        5: "Q",
+        6: "K",
+        7: "p",
+        8: "n",
+        9: "b",
+        10: "r",
+        11: "q",
+        12: "k",
     }
 
     # Unicode piece symbols for pretty display
     UNICODE_PIECES: Dict[int, str] = {
         0: ".",
-        1: "\u2659", 2: "\u2658", 3: "\u2657", 4: "\u2656", 5: "\u2655", 6: "\u2654",
-        7: "\u265F", 8: "\u265E", 9: "\u265D", 10: "\u265C", 11: "\u265B", 12: "\u265A",
+        1: "\u2659",
+        2: "\u2658",
+        3: "\u2657",
+        4: "\u2656",
+        5: "\u2655",
+        6: "\u2654",
+        7: "\u265f",
+        8: "\u265e",
+        9: "\u265d",
+        10: "\u265c",
+        11: "\u265b",
+        12: "\u265a",
     }
 
     NUM_PIECES = 13  # Total piece types including empty
@@ -218,9 +239,7 @@ class FenParser:
         return result
 
     def normalize_for_player(
-        self,
-        board: torch.Tensor,
-        white_to_move: bool
+        self, board: torch.Tensor, white_to_move: bool
     ) -> torch.Tensor:
         """
         Normalize board so current player's pieces are at the bottom.
@@ -246,9 +265,7 @@ class FenParser:
             return self.swap_colors(self.flip_board(board))
 
     def denormalize_for_player(
-        self,
-        board: torch.Tensor,
-        white_to_move: bool
+        self, board: torch.Tensor, white_to_move: bool
     ) -> torch.Tensor:
         """
         Reverse the normalization to get original board orientation.
@@ -267,10 +284,7 @@ class FenParser:
             return self.flip_board(self.swap_colors(board))
 
     def display(
-        self,
-        board: torch.Tensor,
-        use_unicode: bool = False,
-        flip: bool = False
+        self, board: torch.Tensor, use_unicode: bool = False, flip: bool = False
     ) -> str:
         """
         Create a string representation of the board for display.

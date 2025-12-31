@@ -8,9 +8,10 @@ Provides specialized output heads for different prediction tasks:
     - OutcomeHead: Predicts game outcome (win/draw/loss)
 """
 
+from typing import Optional
+
 import torch
 import torch.nn as nn
-from typing import Optional
 
 
 class MoveHead(nn.Module):
@@ -21,12 +22,7 @@ class MoveHead(nn.Module):
     Uses a policy network style architecture with convolution + FC.
     """
 
-    def __init__(
-        self,
-        in_channels: int,
-        num_moves: int = 4096,
-        hidden_dim: int = 256
-    ):
+    def __init__(self, in_channels: int, num_moves: int = 4096, hidden_dim: int = 256):
         """
         Initialize move head.
 
@@ -77,11 +73,7 @@ class ScoreHead(nn.Module):
     position evaluation from side-to-move perspective.
     """
 
-    def __init__(
-        self,
-        in_channels: int,
-        hidden_dim: int = 128
-    ):
+    def __init__(self, in_channels: int, hidden_dim: int = 128):
         """
         Initialize score head.
 
@@ -100,7 +92,7 @@ class ScoreHead(nn.Module):
             nn.ReLU(inplace=True),
             nn.Linear(hidden_dim, hidden_dim // 2),
             nn.ReLU(inplace=True),
-            nn.Linear(hidden_dim // 2, 1)
+            nn.Linear(hidden_dim // 2, 1),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -127,11 +119,7 @@ class CaptureHead(nn.Module):
     Binary classification: is the best move a capture?
     """
 
-    def __init__(
-        self,
-        in_channels: int,
-        num_classes: int = 2
-    ):
+    def __init__(self, in_channels: int, num_classes: int = 2):
         """
         Initialize capture head.
 
@@ -168,12 +156,7 @@ class OutcomeHead(nn.Module):
     Predicts win/draw/loss from current side's perspective.
     """
 
-    def __init__(
-        self,
-        in_channels: int,
-        num_classes: int = 3,
-        hidden_dim: int = 64
-    ):
+    def __init__(self, in_channels: int, num_classes: int = 3, hidden_dim: int = 64):
         """
         Initialize outcome head.
 
@@ -188,7 +171,7 @@ class OutcomeHead(nn.Module):
         self.fc = nn.Sequential(
             nn.Linear(in_channels, hidden_dim),
             nn.ReLU(inplace=True),
-            nn.Linear(hidden_dim, num_classes)
+            nn.Linear(hidden_dim, num_classes),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -216,11 +199,7 @@ class ValueHead(nn.Module):
     a scalar value and win/draw/loss probabilities.
     """
 
-    def __init__(
-        self,
-        in_channels: int,
-        hidden_dim: int = 256
-    ):
+    def __init__(self, in_channels: int, hidden_dim: int = 256):
         """
         Initialize value head.
 
@@ -275,12 +254,7 @@ class PolicyHead(nn.Module):
     in a shared architecture.
     """
 
-    def __init__(
-        self,
-        in_channels: int,
-        num_moves: int = 4096,
-        hidden_dim: int = 256
-    ):
+    def __init__(self, in_channels: int, num_moves: int = 4096, hidden_dim: int = 256):
         """
         Initialize policy head.
 
@@ -338,12 +312,7 @@ class MultiTaskHead(nn.Module):
     shared feature processing.
     """
 
-    def __init__(
-        self,
-        in_channels: int,
-        num_moves: int = 4096,
-        shared_dim: int = 512
-    ):
+    def __init__(self, in_channels: int, num_moves: int = 4096, shared_dim: int = 512):
         """
         Initialize multi-task head.
 
@@ -397,8 +366,8 @@ class MultiTaskHead(nn.Module):
         value_feat = self.relu(self.value_fc(value_feat))
 
         return {
-            'move_logits': self.move_out(policy_feat),
-            'score': self.score_out(value_feat),
-            'capture': self.capture_out(value_feat),
-            'outcome': self.outcome_out(value_feat)
+            "move_logits": self.move_out(policy_feat),
+            "score": self.score_out(value_feat),
+            "capture": self.capture_out(value_feat),
+            "outcome": self.outcome_out(value_feat),
         }

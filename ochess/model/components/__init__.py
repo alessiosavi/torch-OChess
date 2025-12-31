@@ -8,10 +8,12 @@ Components:
     - heads: Output heads (move, score, capture, outcome)
 """
 
-from ochess.model.components.embeddings import PieceEmbedding, PositionalEmbedding
+from ochess.model.components.attention import MultiHeadAttention, SelfAttention
+from ochess.model.components.embeddings import (PieceEmbedding,
+                                                PositionalEmbedding)
+from ochess.model.components.heads import (CaptureHead, MoveHead, OutcomeHead,
+                                           ScoreHead)
 from ochess.model.components.residual import ResidualBlock
-from ochess.model.components.attention import SelfAttention, MultiHeadAttention
-from ochess.model.components.heads import MoveHead, ScoreHead, CaptureHead, OutcomeHead
 
 __all__ = [
     "PieceEmbedding",

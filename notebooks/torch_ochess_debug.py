@@ -30,32 +30,36 @@ RUN_STOCKFISH_EVAL = False  # Set to True to run Stockfish evaluation matches
 # Stockfish path - UPDATE THIS FOR YOUR SYSTEM
 STOCKFISH_PATH = "/usr/local/bin/stockfish"
 
+import json
+import os
 # %%
 # Standard library imports
 import sys
-import os
-from pathlib import Path
-from dataclasses import asdict
-import json
 import time
+from dataclasses import asdict
+from pathlib import Path
 
 # Add project root to path
-PROJECT_ROOT = Path(__file__).parent.parent if "__file__" in dir() else Path.cwd().parent
+PROJECT_ROOT = (
+    Path(__file__).parent.parent if "__file__" in dir() else Path.cwd().parent
+)
 sys.path.insert(0, str(PROJECT_ROOT))
 
+import chess
+import numpy as np
 # Third-party imports
 import torch
 import torch.nn as nn
-import numpy as np
-import chess
 
 # Check for optional visualization library
 try:
     import matplotlib.pyplot as plt
+
     HAS_MATPLOTLIB = True
 except ImportError:
     HAS_MATPLOTLIB = False
     print("matplotlib not installed - some visualizations will be skipped")
+
 
 # %%
 # Device configuration
@@ -71,6 +75,7 @@ def get_device():
         device = "cpu"
         print("Using CPU")
     return device
+
 
 DEVICE = get_device()
 print(f"PyTorch version: {torch.__version__}")
@@ -215,7 +220,9 @@ for uci_move in test_moves:
     index = move_encoder.encode(uci_move)
     decoded = move_encoder.decode(index)
     from_sq, to_sq = move_encoder.get_from_to_squares(index)
-    print(f"{uci_move} -> index {index:4d} -> {decoded} (from sq {from_sq}, to sq {to_sq})")
+    print(
+        f"{uci_move} -> index {index:4d} -> {decoded} (from sq {from_sq}, to sq {to_sq})"
+    )
 
 # %%
 # Working with python-chess Move objects
@@ -266,8 +273,12 @@ normalized_idx = move_encoder.normalize_move_for_black(move_idx)
 denormalized_idx = move_encoder.denormalize_move_for_black(normalized_idx)
 
 print(f"Original: e2e4 (index {move_idx})")
-print(f"Normalized for Black: {move_encoder.decode(normalized_idx)} (index {normalized_idx})")
-print(f"Denormalized: {move_encoder.decode(denormalized_idx)} (index {denormalized_idx})")
+print(
+    f"Normalized for Black: {move_encoder.decode(normalized_idx)} (index {normalized_idx})"
+)
+print(
+    f"Denormalized: {move_encoder.decode(denormalized_idx)} (index {denormalized_idx})"
+)
 
 # %% [markdown]
 # ## 2.3 ScoreEncoder - The Critical Fix
@@ -398,7 +409,7 @@ if STOCKFISH_AVAILABLE:
         stockfish_path=STOCKFISH_PATH,
         threads=4,
         hash_mb=256,
-        skill_level=20  # Maximum strength
+        skill_level=20,  # Maximum strength
     ) as engine:
         print("Stockfish engine started successfully")
         print(f"Running: {engine.is_running()}")
@@ -416,7 +427,9 @@ if STOCKFISH_AVAILABLE:
 if STOCKFISH_AVAILABLE:
     with StockfishWrapper(STOCKFISH_PATH) as engine:
         # Analyze a tactical position
-        tactical_fen = "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4"
+        tactical_fen = (
+            "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4"
+        )
         board = chess.Board(tactical_fen)
 
         print(f"Position: {tactical_fen}")
@@ -463,12 +476,14 @@ pos_generator = PositionGenerator(seed=42)
 # %%
 # Generate positions from random games
 print("Generating positions from random games:")
-random_positions = list(pos_generator.generate_random_game_positions(
-    num_positions=10,
-    max_game_length=100,
-    skip_first_n=4,  # Skip first 4 moves (too early)
-    deduplicate=True
-))
+random_positions = list(
+    pos_generator.generate_random_game_positions(
+        num_positions=10,
+        max_game_length=100,
+        skip_first_n=4,  # Skip first 4 moves (too early)
+        deduplicate=True,
+    )
+)
 
 for i, pos in enumerate(random_positions[:5]):
     print(f"\n  Position {i+1}:")
@@ -481,11 +496,11 @@ for i, pos in enumerate(random_positions[:5]):
 # Generate positions from known openings
 print("\nGenerating positions from openings:")
 pos_generator.clear_dedup_cache()
-opening_positions = list(pos_generator.generate_from_openings(
-    num_positions=10,
-    continuation_depth=20,
-    deduplicate=True
-))
+opening_positions = list(
+    pos_generator.generate_from_openings(
+        num_positions=10, continuation_depth=20, deduplicate=True
+    )
+)
 
 for i, pos in enumerate(opening_positions[:5]):
     print(f"\n  Position {i+1}:")
@@ -507,10 +522,9 @@ for name, moves in COMMON_OPENINGS.items():
 # Generate endgame positions
 print("\nGenerating endgame positions:")
 pos_generator.clear_dedup_cache()
-endgame_positions = list(pos_generator.generate_endgame_positions(
-    num_positions=5,
-    max_pieces=8
-))
+endgame_positions = list(
+    pos_generator.generate_endgame_positions(num_positions=5, max_pieces=8)
+)
 
 for i, pos in enumerate(endgame_positions):
     board = chess.Board(pos.fen)
@@ -524,11 +538,9 @@ for i, pos in enumerate(endgame_positions):
 # Generate mixed positions (recommended for training)
 print("\nGenerating mixed positions:")
 pos_generator.clear_dedup_cache()
-mixed_positions = list(pos_generator.generate_mixed(
-    num_positions=10,
-    random_ratio=0.5,
-    opening_ratio=0.5
-))
+mixed_positions = list(
+    pos_generator.generate_mixed(num_positions=10, random_ratio=0.5, opening_ratio=0.5)
+)
 
 # Show position type distribution
 type_counts = {}
@@ -572,7 +584,7 @@ if STOCKFISH_AVAILABLE and RUN_LONG_OPERATIONS:
         stockfish_hash_mb=256,
         include_bad_moves=True,  # For contrastive learning
         multipv=3,  # Analyze top 3 moves
-        seed=42
+        seed=42,
     )
 
     # Generate a small dataset
@@ -581,7 +593,7 @@ if STOCKFISH_AVAILABLE and RUN_LONG_OPERATIONS:
         output_name="demo_dataset",
         generation_method="mixed",
         batch_size=20,
-        save_intermediate=True
+        save_intermediate=True,
     )
 
     print(f"Dataset saved to: {output_path}")
@@ -627,7 +639,8 @@ else:
 # ## 4.1 ChessDataset
 
 # %%
-from ochess.data.dataset import ChessDataset, create_dataloader, train_val_split
+from ochess.data.dataset import (ChessDataset, create_dataloader,
+                                 train_val_split)
 
 # %%
 # Check for available datasets
@@ -652,7 +665,7 @@ if dataset_path:
         data_path=str(dataset_path),
         sequence_length=5,  # Use 5 consecutive positions
         cache_dir=str(CACHE_DIR),
-        use_cache=True
+        use_cache=True,
     )
 
     print(f"Dataset size: {len(dataset)} sequences")
@@ -676,7 +689,7 @@ if dataset is not None:
     sample = dataset[0]
 
     print("Boards in sequence (last position):")
-    last_board = sample['boards'][-1]  # Last position in sequence
+    last_board = sample["boards"][-1]  # Last position in sequence
     print(fen_parser.display(last_board, use_unicode=True))
 
     print(f"\nTarget move index: {sample['target_move'].item()}")
@@ -690,11 +703,7 @@ if dataset is not None:
 # %%
 if dataset is not None:
     # Split into train/val
-    train_dataset, val_dataset = train_val_split(
-        dataset,
-        val_ratio=0.1,
-        seed=42
-    )
+    train_dataset, val_dataset = train_val_split(dataset, val_ratio=0.1, seed=42)
 
     print(f"Train size: {len(train_dataset)}")
     print(f"Val size: {len(val_dataset)}")
@@ -706,7 +715,7 @@ if dataset is not None:
         shuffle=True,
         num_workers=0,  # Use 0 for notebook compatibility
         pin_memory=True if DEVICE == "cuda" else False,
-        drop_last=True
+        drop_last=True,
     )
 
     val_loader = create_dataloader(
@@ -715,7 +724,7 @@ if dataset is not None:
         shuffle=False,
         num_workers=0,
         pin_memory=True if DEVICE == "cuda" else False,
-        drop_last=False
+        drop_last=False,
     )
 
     print(f"\nTrain batches: {len(train_loader)}")
@@ -762,7 +771,7 @@ resnet_config = ChessResNetConfig(
     dropout=0.3,
     num_moves=4096,
     sequence_length=5,
-    flip_board_for_black=True
+    flip_board_for_black=True,
 )
 
 resnet_model = ChessResNet(resnet_config)
@@ -776,8 +785,8 @@ print(f"Trainable parameters: {resnet_model.num_trainable_parameters:,}")
 # Forward pass example
 if dataset is not None:
     sample = dataset[0]
-    boards = sample['boards'].unsqueeze(0).to(DEVICE)  # Add batch dim
-    colors = sample['colors'].unsqueeze(0).to(DEVICE)
+    boards = sample["boards"].unsqueeze(0).to(DEVICE)  # Add batch dim
+    colors = sample["colors"].unsqueeze(0).to(DEVICE)
 
     with torch.no_grad():
         outputs = resnet_model(boards, colors)
@@ -815,7 +824,8 @@ for key, value in outputs_with_features.items():
 # Self-attention based architecture. Better at long-range patterns.
 
 # %%
-from ochess.model.chess_transformer import ChessTransformer, ChessTransformerConfig
+from ochess.model.chess_transformer import (ChessTransformer,
+                                            ChessTransformerConfig)
 
 # Show all config options
 print("ChessTransformerConfig parameters:")
@@ -833,7 +843,7 @@ transformer_config = ChessTransformerConfig(
     dropout=0.1,
     num_moves=4096,
     sequence_length=5,
-    flip_board_for_black=True
+    flip_board_for_black=True,
 )
 
 transformer_model = ChessTransformer(transformer_config)
@@ -880,7 +890,7 @@ hybrid_config = ChessHybridConfig(
     dropout=0.2,
     num_moves=4096,
     sequence_length=5,
-    flip_board_for_black=True
+    flip_board_for_black=True,
 )
 
 hybrid_model = ChessHybrid(hybrid_config)
@@ -903,19 +913,17 @@ for key, value in outputs.items():
 # %% [markdown]
 # ## 5.4 Model Components Deep Dive
 
+from ochess.model.components.attention import (MultiHeadAttention,
+                                               SelfAttention, TransformerBlock)
 # %%
-from ochess.model.components.embeddings import (
-    PieceEmbedding, PositionalEmbedding, ColorEmbedding, CombinedEmbedding
-)
-from ochess.model.components.residual import (
-    ResidualBlock, BottleneckBlock, SEBlock, ResidualTower
-)
-from ochess.model.components.attention import (
-    SelfAttention, MultiHeadAttention, TransformerBlock
-)
-from ochess.model.components.heads import (
-    MoveHead, ScoreHead, CaptureHead, OutcomeHead
-)
+from ochess.model.components.embeddings import (ColorEmbedding,
+                                                CombinedEmbedding,
+                                                PieceEmbedding,
+                                                PositionalEmbedding)
+from ochess.model.components.heads import (CaptureHead, MoveHead, OutcomeHead,
+                                           ScoreHead)
+from ochess.model.components.residual import (BottleneckBlock, ResidualBlock,
+                                              ResidualTower, SEBlock)
 
 # %%
 # Embedding components
@@ -944,12 +952,16 @@ bottleneck = BottleneckBlock(channels=256, bottleneck_ratio=0.25, dropout=0.1)
 print(f"  BottleneckBlock: {sum(p.numel() for p in bottleneck.parameters()):,} params")
 
 se_block = SEBlock(channels=256, reduction=16)
-print(f"  SEBlock (Squeeze-Excitation): {sum(p.numel() for p in se_block.parameters()):,} params")
+print(
+    f"  SEBlock (Squeeze-Excitation): {sum(p.numel() for p in se_block.parameters()):,} params"
+)
 
 # %%
 # Residual tower
 tower = ResidualTower(channels=256, num_blocks=4, block_type="basic", dropout=0.1)
-print(f"\nResidualTower (4 basic blocks): {sum(p.numel() for p in tower.parameters()):,} params")
+print(
+    f"\nResidualTower (4 basic blocks): {sum(p.numel() for p in tower.parameters()):,} params"
+)
 
 # Test
 x = torch.randn(2, 256, 8, 8)
@@ -966,8 +978,12 @@ print(f"  SelfAttention: {sum(p.numel() for p in self_attn.parameters()):,} para
 mha = MultiHeadAttention(embed_dim=256, num_heads=8, dropout=0.1)
 print(f"  MultiHeadAttention: {sum(p.numel() for p in mha.parameters()):,} params")
 
-transformer_block = TransformerBlock(embed_dim=256, num_heads=8, mlp_ratio=4.0, dropout=0.1)
-print(f"  TransformerBlock: {sum(p.numel() for p in transformer_block.parameters()):,} params")
+transformer_block = TransformerBlock(
+    embed_dim=256, num_heads=8, mlp_ratio=4.0, dropout=0.1
+)
+print(
+    f"  TransformerBlock: {sum(p.numel() for p in transformer_block.parameters()):,} params"
+)
 
 # %%
 # Output heads
@@ -978,10 +994,18 @@ score_head = ScoreHead(in_channels=256, hidden_dim=128)
 capture_head = CaptureHead(in_channels=256, num_classes=2)
 outcome_head = OutcomeHead(in_channels=256, num_classes=3, hidden_dim=64)
 
-print(f"  MoveHead: {sum(p.numel() for p in move_head.parameters()):,} params -> [B, 4096]")
-print(f"  ScoreHead: {sum(p.numel() for p in score_head.parameters()):,} params -> [B, 1]")
-print(f"  CaptureHead: {sum(p.numel() for p in capture_head.parameters()):,} params -> [B, 2]")
-print(f"  OutcomeHead: {sum(p.numel() for p in outcome_head.parameters()):,} params -> [B, 3]")
+print(
+    f"  MoveHead: {sum(p.numel() for p in move_head.parameters()):,} params -> [B, 4096]"
+)
+print(
+    f"  ScoreHead: {sum(p.numel() for p in score_head.parameters()):,} params -> [B, 1]"
+)
+print(
+    f"  CaptureHead: {sum(p.numel() for p in capture_head.parameters()):,} params -> [B, 2]"
+)
+print(
+    f"  OutcomeHead: {sum(p.numel() for p in outcome_head.parameters()):,} params -> [B, 3]"
+)
 
 # %% [markdown]
 # ## 5.5 Model Comparison
@@ -1046,10 +1070,8 @@ else:
 # ## 6.1 Individual Losses
 
 # %%
-from ochess.model.losses import (
-    MoveLoss, ScoreLoss, CaptureLoss, OutcomeLoss,
-    ChessLoss, ContrastiveLoss, FocalLoss
-)
+from ochess.model.losses import (CaptureLoss, ChessLoss, ContrastiveLoss,
+                                 FocalLoss, MoveLoss, OutcomeLoss, ScoreLoss)
 
 # %%
 # MoveLoss - CrossEntropy for move prediction
@@ -1103,12 +1125,12 @@ print(f"OutcomeLoss: {loss.item():.4f}")
 # %%
 # ChessLoss - Weighted combination of all losses
 chess_loss_fn = ChessLoss(
-    move_weight=3.0,      # Primary task - higher weight
-    score_weight=0.5,     # Auxiliary
-    capture_weight=1.0,   # Auxiliary
-    outcome_weight=1.0,   # Auxiliary
+    move_weight=3.0,  # Primary task - higher weight
+    score_weight=0.5,  # Auxiliary
+    capture_weight=1.0,  # Auxiliary
+    outcome_weight=1.0,  # Auxiliary
     label_smoothing=0.1,
-    score_delta=2.0
+    score_delta=2.0,
 )
 
 print("ChessLoss weights:")
@@ -1120,17 +1142,17 @@ print(f"  outcome: {chess_loss_fn.outcome_weight}")
 # %%
 # Simulate model outputs and targets
 outputs = {
-    'move_logits': torch.randn(8, 4096),
-    'score': torch.randn(8, 1),
-    'capture': torch.randn(8, 2),
-    'outcome': torch.randn(8, 3),
+    "move_logits": torch.randn(8, 4096),
+    "score": torch.randn(8, 1),
+    "capture": torch.randn(8, 2),
+    "outcome": torch.randn(8, 3),
 }
 
 targets = {
-    'target_move': torch.randint(0, 4096, (8,)),
-    'score': torch.randn(8),
-    'is_capture': torch.randint(0, 2, (8,)),
-    'outcome': torch.randint(0, 3, (8,)),
+    "target_move": torch.randint(0, 4096, (8,)),
+    "score": torch.randn(8),
+    "is_capture": torch.randint(0, 2, (8,)),
+    "outcome": torch.randint(0, 3, (8,)),
 }
 
 # Compute total loss
@@ -1197,33 +1219,27 @@ train_config = TrainingConfig(
     weight_decay=1e-4,
     batch_size=256,
     epochs=100,
-
     # Loss weights
     move_loss_weight=3.0,
     score_loss_weight=0.5,
     capture_loss_weight=1.0,
     outcome_loss_weight=1.0,
-
     # Learning rate scheduling
     lr_scheduler="cosine",  # Options: "cosine", "step", "plateau", "none"
     lr_warmup_epochs=5,
     lr_min=1e-6,
-
     # Checkpointing
     checkpoint_dir=str(CHECKPOINTS_DIR),
     save_every_n_epochs=5,
     save_best_only=False,
-
     # Early stopping
     early_stopping_patience=10,
     early_stopping_metric="val_loss",
-
     # Hardware
     device=DEVICE,
     use_amp=True,  # Automatic mixed precision
     num_workers=4,
     gradient_clip=1.0,
-
     # Logging
     log_every_n_steps=50,
 )
@@ -1271,7 +1287,7 @@ if dataset is not None and RUN_TRAINING:
 
     print("\nTraining complete!")
     print(f"Final train loss: {history['train_loss'][-1]:.4f}")
-    if history.get('val_loss'):
+    if history.get("val_loss"):
         print(f"Final val loss: {history['val_loss'][-1]:.4f}")
 else:
     if dataset is None:
@@ -1283,13 +1299,14 @@ else:
 # ## 7.3 Callbacks
 
 # %%
-from ochess.training.callbacks import EarlyStopping, ModelCheckpoint, MetricsLogger
+from ochess.training.callbacks import (EarlyStopping, MetricsLogger,
+                                       ModelCheckpoint)
 
 # %%
 # EarlyStopping callback
 early_stopping = EarlyStopping(
-    patience=10,      # Stop after 10 epochs without improvement
-    min_delta=0.001   # Minimum improvement to count
+    patience=10,  # Stop after 10 epochs without improvement
+    min_delta=0.001,  # Minimum improvement to count
 )
 
 print("EarlyStopping callback:")
@@ -1298,10 +1315,7 @@ print(f"  min_delta: {early_stopping.min_delta}")
 
 # %%
 # ModelCheckpoint callback
-model_checkpoint = ModelCheckpoint(
-    save_best_only=True,
-    metric='val_loss'
-)
+model_checkpoint = ModelCheckpoint(save_best_only=True, metric="val_loss")
 
 print("\nModelCheckpoint callback:")
 print(f"  save_best_only: {model_checkpoint.save_best_only}")
@@ -1309,9 +1323,7 @@ print(f"  metric: {model_checkpoint.metric}")
 
 # %%
 # MetricsLogger callback
-metrics_logger = MetricsLogger(
-    log_file=str(CHECKPOINTS_DIR / "training_log.tsv")
-)
+metrics_logger = MetricsLogger(log_file=str(CHECKPOINTS_DIR / "training_log.tsv"))
 
 print("\nMetricsLogger callback:")
 print(f"  log_file: {metrics_logger.log_file}")
@@ -1320,7 +1332,8 @@ print(f"  log_file: {metrics_logger.log_file}")
 # ## 7.4 Metrics
 
 # %%
-from ochess.training.metrics import AccuracyMetric, compute_move_accuracy, compute_top_k_accuracy
+from ochess.training.metrics import (AccuracyMetric, compute_move_accuracy,
+                                     compute_top_k_accuracy)
 
 # %%
 # AccuracyMetric
@@ -1359,12 +1372,12 @@ demo_checkpoint_path = CHECKPOINTS_DIR / "demo_checkpoint.pt"
 if dataset is not None:
     # Create a minimal checkpoint for demo
     checkpoint = {
-        'epoch': 0,
-        'global_step': 0,
-        'model_state_dict': resnet_model.state_dict(),
-        'best_val_loss': float('inf'),
-        'history': {'train_loss': [], 'val_loss': []},
-        'config': asdict(resnet_config),
+        "epoch": 0,
+        "global_step": 0,
+        "model_state_dict": resnet_model.state_dict(),
+        "best_val_loss": float("inf"),
+        "history": {"train_loss": [], "val_loss": []},
+        "config": asdict(resnet_config),
     }
 
     torch.save(checkpoint, demo_checkpoint_path)
@@ -1377,9 +1390,9 @@ if demo_checkpoint_path.exists():
 
     print("Checkpoint contents:")
     for key in checkpoint.keys():
-        if key == 'model_state_dict':
+        if key == "model_state_dict":
             print(f"  {key}: {len(checkpoint[key])} tensors")
-        elif key == 'config':
+        elif key == "config":
             print(f"  {key}: {type(checkpoint[key])}")
         else:
             print(f"  {key}: {checkpoint[key]}")
@@ -1399,11 +1412,7 @@ from ochess.play.engine import ChessEngine
 
 # %%
 # Create engine with a model
-engine = ChessEngine(
-    model=resnet_model,
-    device=DEVICE,
-    sequence_length=5
-)
+engine = ChessEngine(model=resnet_model, device=DEVICE, sequence_length=5)
 
 print("ChessEngine created")
 print(f"  device: {engine.device}")
@@ -1472,14 +1481,14 @@ for temp in [0.1, 0.5, 1.0, 2.0]:
 
 # %%
 if STOCKFISH_AVAILABLE:
-    from ochess.evaluation.stockfish_eval import StockfishEvaluator, GameResult
+    from ochess.evaluation.stockfish_eval import GameResult, StockfishEvaluator
 
     # Create evaluator
     evaluator = StockfishEvaluator(
         model=resnet_model,
         stockfish_path=STOCKFISH_PATH,
         device=DEVICE,
-        sequence_length=5
+        sequence_length=5,
     )
 
     print("StockfishEvaluator created")
@@ -1494,14 +1503,17 @@ if STOCKFISH_AVAILABLE and RUN_STOCKFISH_EVAL:
     results = evaluator.play_match(
         num_games=10,
         stockfish_levels=[1, 5, 10],
-        model_plays_white=None  # Alternate colors
+        model_plays_white=None,  # Alternate colors
     )
 
     print("\nResults:")
     for level, records in results.items():
-        wins = sum(1 for r in records if
-                   (r.result == GameResult.WHITE_WIN and r.model_color) or
-                   (r.result == GameResult.BLACK_WIN and not r.model_color))
+        wins = sum(
+            1
+            for r in records
+            if (r.result == GameResult.WHITE_WIN and r.model_color)
+            or (r.result == GameResult.BLACK_WIN and not r.model_color)
+        )
         draws = sum(1 for r in records if r.result == GameResult.DRAW)
         losses = len(records) - wins - draws
 
@@ -1512,6 +1524,7 @@ else:
 
 # %% [markdown]
 # ## 8.3 Inference Examples
+
 
 # %%
 # Single position prediction
@@ -1532,25 +1545,34 @@ def predict_move_for_position(fen: str, model: nn.Module, device: str):
         color = color.to(device)
         outputs = model(board_tensor, color)
 
-    logits = outputs['move_logits'][0]
+    logits = outputs["move_logits"][0]
 
     # Filter to legal moves
     legal_mask = move_encoder.get_legal_move_mask(board)
     filtered_logits = logits.cpu()
-    filtered_logits[~legal_mask] = float('-inf')
+    filtered_logits[~legal_mask] = float("-inf")
 
     # Get top 5 moves
     top_indices = filtered_logits.argsort(descending=True)[:5]
 
-    return board, [(move_encoder.decode(idx.item()), filtered_logits[idx].item())
-                   for idx in top_indices]
+    return board, [
+        (move_encoder.decode(idx.item()), filtered_logits[idx].item())
+        for idx in top_indices
+    ]
+
 
 # %%
 # Test on some positions
 test_positions = [
     ("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "Starting position"),
-    ("r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3", "Italian Game setup"),
-    ("r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4", "Scholar's Mate threat"),
+    (
+        "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3",
+        "Italian Game setup",
+    ),
+    (
+        "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4",
+        "Scholar's Mate threat",
+    ),
 ]
 
 print("Move predictions for various positions:")
@@ -1570,6 +1592,7 @@ for fen, description in test_positions:
             san = uci
         print(f"  {i}. {san:8s} ({uci}): {score:.3f}")
 
+
 # %%
 # Batch prediction
 def batch_predict(fens: list, model: nn.Module, device: str):
@@ -1579,7 +1602,7 @@ def batch_predict(fens: list, model: nn.Module, device: str):
     boards = torch.stack([fen_parser.to_tensor(fen) for fen in fens])
     boards = boards.unsqueeze(1)  # Add sequence dim [B, 1, 8, 8]
 
-    colors = torch.tensor([[0 if 'w' in fen.split()[1] else 1] for fen in fens])
+    colors = torch.tensor([[0 if "w" in fen.split()[1] else 1] for fen in fens])
 
     model.eval()
     with torch.no_grad():
@@ -1588,6 +1611,7 @@ def batch_predict(fens: list, model: nn.Module, device: str):
         outputs = model(boards, colors)
 
     return outputs
+
 
 # %%
 # Batch prediction example
@@ -1608,6 +1632,7 @@ for key, value in batch_outputs.items():
 # %%
 # Visualize move probabilities (if matplotlib available)
 if HAS_MATPLOTLIB:
+
     def visualize_move_probs(fen: str, model: nn.Module, device: str):
         """Visualize move probabilities as a heatmap."""
         board = chess.Board(fen)
@@ -1622,7 +1647,7 @@ if HAS_MATPLOTLIB:
         with torch.no_grad():
             outputs = model(board_tensor.to(device), color.to(device))
 
-        logits = outputs['move_logits'][0].cpu()
+        logits = outputs["move_logits"][0].cpu()
         probs = torch.softmax(logits, dim=0)
 
         # Filter to legal moves
@@ -1642,27 +1667,33 @@ if HAS_MATPLOTLIB:
 
         # Board
         ax1.set_title("Position")
-        ax1.text(0.5, 0.5, str(board), fontsize=8, family='monospace',
-                 ha='center', va='center', transform=ax1.transAxes)
-        ax1.axis('off')
+        ax1.text(
+            0.5,
+            0.5,
+            str(board),
+            fontsize=8,
+            family="monospace",
+            ha="center",
+            va="center",
+            transform=ax1.transAxes,
+        )
+        ax1.axis("off")
 
         # Heatmap
-        im = ax2.imshow(to_heatmap.numpy(), cmap='YlOrRd')
+        im = ax2.imshow(to_heatmap.numpy(), cmap="YlOrRd")
         ax2.set_title("Move Destination Probabilities")
         ax2.set_xticks(range(8))
         ax2.set_yticks(range(8))
-        ax2.set_xticklabels(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'])
-        ax2.set_yticklabels(['8', '7', '6', '5', '4', '3', '2', '1'])
-        plt.colorbar(im, ax=ax2, label='Probability')
+        ax2.set_xticklabels(["a", "b", "c", "d", "e", "f", "g", "h"])
+        ax2.set_yticklabels(["8", "7", "6", "5", "4", "3", "2", "1"])
+        plt.colorbar(im, ax=ax2, label="Probability")
 
         plt.tight_layout()
         plt.show()
 
     # Visualize for starting position
     visualize_move_probs(
-        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-        resnet_model,
-        DEVICE
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", resnet_model, DEVICE
     )
 else:
     print("Skipping visualization - matplotlib not available")

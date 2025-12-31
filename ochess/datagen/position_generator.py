@@ -7,27 +7,30 @@ Generates diverse chess positions using various methods:
     - Tactical positions (positions with sharp moves)
 """
 
-import chess
+import logging
 import random
 from dataclasses import dataclass
-from typing import List, Optional, Generator, Set
 from enum import Enum
-import logging
+from typing import Generator, List, Optional, Set
+
+import chess
 
 logger = logging.getLogger(__name__)
 
 
 class PositionType(Enum):
     """Classification of chess position types."""
-    OPENING = "opening"       # First ~10 moves
+
+    OPENING = "opening"  # First ~10 moves
     MIDDLEGAME = "middlegame"  # Moves 10-40
-    ENDGAME = "endgame"       # Few pieces remaining
-    TACTICAL = "tactical"     # Sharp positions with tactics
+    ENDGAME = "endgame"  # Few pieces remaining
+    TACTICAL = "tactical"  # Sharp positions with tactics
 
 
 @dataclass
 class GeneratedPosition:
     """A generated chess position with metadata."""
+
     fen: str
     position_type: PositionType
     move_number: int
@@ -96,7 +99,7 @@ class PositionGenerator:
         num_positions: int,
         max_game_length: int = 100,
         skip_first_n: int = 4,
-        deduplicate: bool = True
+        deduplicate: bool = True,
     ) -> Generator[GeneratedPosition, None, None]:
         """
         Generate positions by playing random legal moves.
@@ -147,7 +150,7 @@ class PositionGenerator:
                         move_number=move_number,
                         white_to_move=board.turn == chess.WHITE,
                         source="random_game",
-                        game_id=game_id
+                        game_id=game_id,
                     )
 
                     if positions_generated >= num_positions:
@@ -177,7 +180,7 @@ class PositionGenerator:
         num_positions: int,
         openings: Optional[List[List[str]]] = None,
         continuation_depth: int = 30,
-        deduplicate: bool = True
+        deduplicate: bool = True,
     ) -> Generator[GeneratedPosition, None, None]:
         """
         Generate positions starting from known openings.
@@ -238,7 +241,7 @@ class PositionGenerator:
                             move_number=opening_length + i,
                             white_to_move=board.turn == chess.WHITE,
                             source="from_opening",
-                            game_id=game_id
+                            game_id=game_id,
                         )
 
                         if positions_generated >= num_positions:
@@ -253,10 +256,7 @@ class PositionGenerator:
                 board.push(move)
 
     def generate_mixed(
-        self,
-        num_positions: int,
-        random_ratio: float = 0.5,
-        opening_ratio: float = 0.5
+        self, num_positions: int, random_ratio: float = 0.5, opening_ratio: float = 0.5
     ) -> Generator[GeneratedPosition, None, None]:
         """
         Generate positions using a mix of methods.
@@ -288,9 +288,7 @@ class PositionGenerator:
             yield pos
 
     def generate_endgame_positions(
-        self,
-        num_positions: int,
-        max_pieces: int = 8
+        self, num_positions: int, max_pieces: int = 8
     ) -> Generator[GeneratedPosition, None, None]:
         """
         Generate endgame positions with few pieces.
@@ -342,17 +340,13 @@ class PositionGenerator:
                             move_number=move_number,
                             white_to_move=board.turn == chess.WHITE,
                             source="endgame",
-                            game_id=f"endgame_{game_counter}"
+                            game_id=f"endgame_{game_counter}",
                         )
 
                         if positions_generated >= num_positions:
                             return
 
-    def _classify_position(
-        self,
-        board: chess.Board,
-        move_number: int
-    ) -> PositionType:
+    def _classify_position(self, board: chess.Board, move_number: int) -> PositionType:
         """
         Classify position as opening, middlegame, or endgame.
 
@@ -382,6 +376,4 @@ class PositionGenerator:
 
     def get_stats(self) -> dict:
         """Get generation statistics."""
-        return {
-            "unique_positions": len(self._generated_fens)
-        }
+        return {"unique_positions": len(self._generated_fens)}

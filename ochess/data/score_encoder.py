@@ -31,6 +31,7 @@ Mate Scores:
 
 import re
 from typing import Optional, Tuple
+
 import torch
 
 
@@ -51,7 +52,7 @@ class ScoreEncoder:
     """
 
     MATE_SCORE = 10000  # Base centipawns for mate
-    MAX_SCORE = 15000   # Clip scores above this
+    MAX_SCORE = 15000  # Clip scores above this
 
     def __init__(self, normalize: bool = True, scale: float = 1000.0):
         """
@@ -65,11 +66,7 @@ class ScoreEncoder:
         self.normalize = normalize
         self.scale = scale
 
-    def encode(
-        self,
-        score_str: str,
-        white_to_move: bool
-    ) -> float:
+    def encode(self, score_str: str, white_to_move: bool) -> float:
         """
         Convert Stockfish score string to side-to-move perspective.
 
@@ -116,11 +113,7 @@ class ScoreEncoder:
 
         return float(centipawns)
 
-    def encode_from_centipawns(
-        self,
-        centipawns: int,
-        white_to_move: bool
-    ) -> float:
+    def encode_from_centipawns(self, centipawns: int, white_to_move: bool) -> float:
         """
         Encode score from centipawns value (White's perspective).
 
@@ -141,11 +134,7 @@ class ScoreEncoder:
 
         return float(centipawns)
 
-    def decode(
-        self,
-        encoded_score: float,
-        white_to_move: bool
-    ) -> int:
+    def decode(self, encoded_score: float, white_to_move: bool) -> int:
         """
         Convert encoded score back to centipawns (White's perspective).
 
@@ -185,7 +174,7 @@ class ScoreEncoder:
         score_str = score_str.strip()
 
         # Handle mate scores
-        if '#' in score_str or score_str.upper().startswith('M'):
+        if "#" in score_str or score_str.upper().startswith("M"):
             return self._parse_mate_score(score_str)
 
         # Handle "cp" suffix (e.g., "+150cp")
@@ -248,7 +237,7 @@ class ScoreEncoder:
     def is_mate_score(self, score_str: str) -> bool:
         """Check if score string represents a mate."""
         score_str = score_str.strip().upper()
-        return '#' in score_str or score_str.startswith('M')
+        return "#" in score_str or score_str.startswith("M")
 
     def get_mate_distance(self, score_str: str) -> Optional[int]:
         """
@@ -272,11 +261,7 @@ class ScoreEncoder:
         except ValueError:
             return None
 
-    def encode_batch(
-        self,
-        scores: list,
-        white_to_move: list
-    ) -> torch.Tensor:
+    def encode_batch(self, scores: list, white_to_move: list) -> torch.Tensor:
         """
         Encode a batch of scores.
 

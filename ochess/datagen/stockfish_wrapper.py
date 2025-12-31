@@ -8,12 +8,13 @@ Provides a clean interface to Stockfish for:
     - Configurable skill levels
 """
 
+import logging
+from dataclasses import dataclass
+from pathlib import Path
+from typing import List, Optional, Tuple
+
 import chess
 import chess.engine
-from dataclasses import dataclass
-from typing import List, Optional, Tuple
-from pathlib import Path
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -21,12 +22,13 @@ logger = logging.getLogger(__name__)
 @dataclass
 class AnalysisResult:
     """Result from analyzing a position."""
+
     best_move: chess.Move
-    score_cp: int           # Centipawns from White's perspective
-    score_str: str          # String representation (e.g., "+150", "#5")
-    pv: List[chess.Move]    # Principal variation (sequence of best moves)
-    depth: int              # Search depth reached
-    is_mate: bool           # True if this is a mate score
+    score_cp: int  # Centipawns from White's perspective
+    score_str: str  # String representation (e.g., "+150", "#5")
+    pv: List[chess.Move]  # Principal variation (sequence of best moves)
+    depth: int  # Search depth reached
+    is_mate: bool  # True if this is a mate score
     mate_in: Optional[int]  # Moves until mate (positive=White, negative=Black)
 
     def __str__(self) -> str:
@@ -59,7 +61,7 @@ class StockfishWrapper:
         stockfish_path: str,
         threads: int = 4,
         hash_mb: int = 256,
-        skill_level: int = 20
+        skill_level: int = 20,
     ):
         """
         Initialize Stockfish wrapper.
@@ -95,12 +97,16 @@ class StockfishWrapper:
 
         logger.info(f"Starting Stockfish from {self.path}")
         self.engine = chess.engine.SimpleEngine.popen_uci(str(self.path))
-        self.engine.configure({
-            "Threads": self.threads,
-            "Hash": self.hash_mb,
-            "Skill Level": self.skill_level
-        })
-        logger.info(f"Stockfish started (threads={self.threads}, hash={self.hash_mb}MB)")
+        self.engine.configure(
+            {
+                "Threads": self.threads,
+                "Hash": self.hash_mb,
+                "Skill Level": self.skill_level,
+            }
+        )
+        logger.info(
+            f"Stockfish started (threads={self.threads}, hash={self.hash_mb}MB)"
+        )
 
     def stop(self) -> None:
         """Stop the Stockfish engine."""
@@ -118,7 +124,7 @@ class StockfishWrapper:
         board: chess.Board,
         depth: int = 20,
         time_limit: Optional[float] = None,
-        multipv: int = 1
+        multipv: int = 1,
     ) -> List[AnalysisResult]:
         """
         Analyze a position.
@@ -136,7 +142,9 @@ class StockfishWrapper:
             RuntimeError: If engine is not started
         """
         if self.engine is None:
-            raise RuntimeError("Engine not started. Call start() or use context manager.")
+            raise RuntimeError(
+                "Engine not started. Call start() or use context manager."
+            )
 
         # Set limit
         if time_limit is not None:
@@ -161,10 +169,7 @@ class StockfishWrapper:
         return results
 
     def get_best_move(
-        self,
-        board: chess.Board,
-        depth: int = 20,
-        time_limit: Optional[float] = None
+        self, board: chess.Board, depth: int = 20, time_limit: Optional[float] = None
     ) -> Tuple[chess.Move, int]:
         """
         Get best move and score for a position.
@@ -186,10 +191,7 @@ class StockfishWrapper:
         return results[0].best_move, results[0].score_cp
 
     def get_top_moves(
-        self,
-        board: chess.Board,
-        n: int = 3,
-        depth: int = 15
+        self, board: chess.Board, n: int = 3, depth: int = 15
     ) -> List[Tuple[chess.Move, int]]:
         """
         Get top N moves with their scores.
@@ -206,10 +208,7 @@ class StockfishWrapper:
         return [(r.best_move, r.score_cp) for r in results]
 
     def evaluate_move(
-        self,
-        board: chess.Board,
-        move: chess.Move,
-        depth: int = 15
+        self, board: chess.Board, move: chess.Move, depth: int = 15
     ) -> int:
         """
         Evaluate a specific move.
@@ -239,9 +238,7 @@ class StockfishWrapper:
         return -results[0].score_cp
 
     def _parse_info(
-        self,
-        info: chess.engine.InfoDict,
-        board: chess.Board
+        self, info: chess.engine.InfoDict, board: chess.Board
     ) -> Optional[AnalysisResult]:
         """
         Parse Stockfish analysis info dict.
@@ -292,7 +289,7 @@ class StockfishWrapper:
             pv=pv,
             depth=info.get("depth", 0),
             is_mate=is_mate,
-            mate_in=mate_in
+            mate_in=mate_in,
         )
 
     def set_skill_level(self, level: int) -> None:
@@ -307,10 +304,7 @@ class StockfishWrapper:
         self.skill_level = level
 
     def play_move(
-        self,
-        board: chess.Board,
-        depth: int = 20,
-        time_limit: Optional[float] = None
+        self, board: chess.Board, depth: int = 20, time_limit: Optional[float] = None
     ) -> chess.Move:
         """
         Get the move Stockfish would play.
