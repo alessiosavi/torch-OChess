@@ -82,8 +82,9 @@ class PositionalEmbedding(nn.Module):
         nn.init.normal_(self.col_embed.weight, mean=0, std=0.02)
 
         # Pre-compute position indices
-        rows = torch.arange(board_size).unsqueeze(1).expand(board_size, board_size)
-        cols = torch.arange(board_size).unsqueeze(0).expand(board_size, board_size)
+        # Use clone() to ensure contiguous memory (required for state_dict loading)
+        rows = torch.arange(board_size).unsqueeze(1).expand(board_size, board_size).clone()
+        cols = torch.arange(board_size).unsqueeze(0).expand(board_size, board_size).clone()
         self.register_buffer('rows', rows)
         self.register_buffer('cols', cols)
 

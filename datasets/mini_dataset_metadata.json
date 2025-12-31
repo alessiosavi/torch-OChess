@@ -1,0 +1,9 @@
+{
+  "name": "mini_dataset",
+  "num_positions": 500,
+  "generation_method": "mixed",
+  "analysis_depth": 1,
+  "include_bad_moves": true,
+  "multipv": 3,
+  "seed": 42
+}
