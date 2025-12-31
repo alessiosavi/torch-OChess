@@ -6,9 +6,10 @@ Provides:
     - PositionalEmbedding: Learnable position encodings for squares
 """
 
+import math
+
 import torch
 import torch.nn as nn
-import math
 
 
 class PieceEmbedding(nn.Module):
@@ -82,10 +83,15 @@ class PositionalEmbedding(nn.Module):
         nn.init.normal_(self.col_embed.weight, mean=0, std=0.02)
 
         # Pre-compute position indices
-        rows = torch.arange(board_size).unsqueeze(1).expand(board_size, board_size)
-        cols = torch.arange(board_size).unsqueeze(0).expand(board_size, board_size)
-        self.register_buffer('rows', rows)
-        self.register_buffer('cols', cols)
+        # Use clone() to ensure contiguous memory (required for state_dict loading)
+        rows = (
+            torch.arange(board_size).unsqueeze(1).expand(board_size, board_size).clone()
+        )
+        cols = (
+            torch.arange(board_size).unsqueeze(0).expand(board_size, board_size).clone()
+        )
+        self.register_buffer("rows", rows)
+        self.register_buffer("cols", cols)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -138,12 +144,10 @@ class SinusoidalPositionalEmbedding(nn.Module):
 
         # Compute sinusoidal embeddings
         pe = self._create_sinusoidal_embeddings(board_size, embed_dim)
-        self.register_buffer('pe', pe)
+        self.register_buffer("pe", pe)
 
     def _create_sinusoidal_embeddings(
-        self,
-        board_size: int,
-        embed_dim: int
+        self, board_size: int, embed_dim: int
     ) -> torch.Tensor:
         """Create sinusoidal position embeddings."""
         pe = torch.zeros(board_size, board_size, embed_dim)
@@ -214,7 +218,7 @@ class CombinedEmbedding(nn.Module):
         self,
         num_pieces: int = 13,
         embed_dim: int = 128,
-        use_learnable_position: bool = True
+        use_learnable_position: bool = True,
     ):
         """
         Initialize combined embeddings.

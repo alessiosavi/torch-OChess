@@ -3,7 +3,7 @@ Training callbacks for monitoring and control.
 """
 
 import logging
-from typing import Dict, Optional, Callable
+from typing import Callable, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -15,13 +15,15 @@ class EarlyStopping:
         self.patience = patience
         self.min_delta = min_delta
         self.counter = 0
-        self.best_loss = float('inf')
+        self.best_loss = float("inf")
 
-    def __call__(self, trainer, epoch: int, train_metrics: Dict, val_metrics: Optional[Dict]):
+    def __call__(
+        self, trainer, epoch: int, train_metrics: Dict, val_metrics: Optional[Dict]
+    ):
         if val_metrics is None:
             return
 
-        current_loss = val_metrics.get('loss', float('inf'))
+        current_loss = val_metrics.get("loss", float("inf"))
 
         if current_loss < self.best_loss - self.min_delta:
             self.best_loss = current_loss
@@ -36,17 +38,20 @@ class EarlyStopping:
 class ModelCheckpoint:
     """Save model checkpoints."""
 
-    def __init__(self, save_best_only: bool = True, metric: str = 'val_loss'):
+    def __init__(self, save_best_only: bool = True, metric: str = "val_loss"):
         self.save_best_only = save_best_only
         self.metric = metric
-        self.best_value = float('inf') if 'loss' in metric else 0
+        self.best_value = float("inf") if "loss" in metric else 0
 
-    def __call__(self, trainer, epoch: int, train_metrics: Dict, val_metrics: Optional[Dict]):
+    def __call__(
+        self, trainer, epoch: int, train_metrics: Dict, val_metrics: Optional[Dict]
+    ):
         metrics = val_metrics if val_metrics else train_metrics
-        current = metrics.get(self.metric.replace('val_', ''), 0)
+        current = metrics.get(self.metric.replace("val_", ""), 0)
 
         is_better = (
-            current < self.best_value if 'loss' in self.metric
+            current < self.best_value
+            if "loss" in self.metric
             else current > self.best_value
         )
 
@@ -62,9 +67,11 @@ class MetricsLogger:
     def __init__(self, log_file: Optional[str] = None):
         self.log_file = log_file
 
-    def __call__(self, trainer, epoch: int, train_metrics: Dict, val_metrics: Optional[Dict]):
+    def __call__(
+        self, trainer, epoch: int, train_metrics: Dict, val_metrics: Optional[Dict]
+    ):
         if self.log_file:
-            with open(self.log_file, 'a') as f:
+            with open(self.log_file, "a") as f:
                 line = f"Epoch {epoch}: train_loss={train_metrics['loss']:.4f}"
                 if val_metrics:
                     line += f", val_loss={val_metrics['loss']:.4f}"

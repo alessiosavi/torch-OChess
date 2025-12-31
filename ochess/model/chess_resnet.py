@@ -13,19 +13,23 @@ Key features:
 - Efficient Conv2D-based processing
 """
 
+from dataclasses import dataclass
+from typing import Dict, Optional
+
 import torch
 import torch.nn as nn
-from typing import Dict, Optional
-from dataclasses import dataclass
 
-from ochess.model.components.embeddings import PieceEmbedding, PositionalEmbedding, ColorEmbedding
+from ochess.model.components.embeddings import (ColorEmbedding, PieceEmbedding,
+                                                PositionalEmbedding)
+from ochess.model.components.heads import (CaptureHead, MoveHead, OutcomeHead,
+                                           ScoreHead)
 from ochess.model.components.residual import ResidualBlock, ResidualTower
-from ochess.model.components.heads import MoveHead, ScoreHead, CaptureHead, OutcomeHead
 
 
 @dataclass
 class ChessResNetConfig:
     """Configuration for ChessResNet."""
+
     # Embeddings
     piece_embed_dim: int = 64
     position_embed_dim: int = 64
@@ -87,7 +91,9 @@ class ChessResNet(nn.Module):
         self.color_embed = ColorEmbedding(config.hidden_dim)
 
         # Initial projection: embed_dim -> hidden_dim
-        self.input_conv = nn.Conv2d(embed_dim, config.hidden_dim, kernel_size=3, padding=1, bias=False)
+        self.input_conv = nn.Conv2d(
+            embed_dim, config.hidden_dim, kernel_size=3, padding=1, bias=False
+        )
         self.input_bn = nn.BatchNorm2d(config.hidden_dim)
         self.relu = nn.ReLU(inplace=True)
 
@@ -96,7 +102,7 @@ class ChessResNet(nn.Module):
             channels=config.hidden_dim,
             num_blocks=config.num_residual_blocks,
             block_type="basic",
-            dropout=config.dropout
+            dropout=config.dropout,
         )
 
         # Temporal aggregation (if using sequences)
@@ -105,7 +111,7 @@ class ChessResNet(nn.Module):
                 config.hidden_dim,
                 config.hidden_dim,
                 kernel_size=(config.sequence_length, 1, 1),
-                bias=False
+                bias=False,
             )
             self.temporal_bn = nn.BatchNorm3d(config.hidden_dim)
         else:
@@ -124,7 +130,7 @@ class ChessResNet(nn.Module):
         """Initialize network weights."""
         for m in self.modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.Conv3d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
             elif isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.BatchNorm3d):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
@@ -137,7 +143,7 @@ class ChessResNet(nn.Module):
         self,
         board_tensor: torch.Tensor,
         color_to_move: torch.Tensor,
-        return_features: bool = False
+        return_features: bool = False,
     ) -> Dict[str, torch.Tensor]:
         """
         Forward pass.
@@ -168,7 +174,7 @@ class ChessResNet(nn.Module):
 
         # Get embeddings
         piece_emb = self.piece_embed(board_tensor)  # [B, T, 8, 8, piece_dim]
-        pos_emb = self.pos_embed(board_tensor)       # [8, 8, pos_dim]
+        pos_emb = self.pos_embed(board_tensor)  # [8, 8, pos_dim]
 
         # Expand position embeddings
         pos_emb = pos_emb.unsqueeze(0).unsqueeze(0).expand(B, T, -1, -1, -1)
@@ -197,30 +203,30 @@ class ChessResNet(nn.Module):
             x = x.squeeze(2)  # [B, hidden_dim, 8, 8]
         else:
             # Just take the last position
-            x = x.view(B, T, self.config.hidden_dim, H, W)[:, -1]  # [B, hidden_dim, 8, 8]
+            x = x.view(B, T, self.config.hidden_dim, H, W)[
+                :, -1
+            ]  # [B, hidden_dim, 8, 8]
 
         # Add color context
         color_ctx = self.color_embed(color_to_move[:, -1])  # [B, hidden_dim]
-        color_ctx = color_ctx.unsqueeze(-1).unsqueeze(-1)   # [B, hidden_dim, 1, 1]
+        color_ctx = color_ctx.unsqueeze(-1).unsqueeze(-1)  # [B, hidden_dim, 1, 1]
         x = x + color_ctx
 
         # Output heads
         outputs = {
-            'move_logits': self.move_head(x),
-            'score': self.score_head(x),
-            'capture': self.capture_head(x),
-            'outcome': self.outcome_head(x)
+            "move_logits": self.move_head(x),
+            "score": self.score_head(x),
+            "capture": self.capture_head(x),
+            "outcome": self.outcome_head(x),
         }
 
         if return_features:
-            outputs['features'] = x
+            outputs["features"] = x
 
         return outputs
 
     def _flip_boards_for_black(
-        self,
-        boards: torch.Tensor,
-        colors: torch.Tensor
+        self, boards: torch.Tensor, colors: torch.Tensor
     ) -> torch.Tensor:
         """
         Flip boards when Black to move.
@@ -239,7 +245,7 @@ class ChessResNet(nn.Module):
         result = boards.clone()
 
         # Create mask for Black's turns
-        black_mask = (colors == 1)
+        black_mask = colors == 1
 
         for b in range(B):
             for t in range(T):
@@ -261,7 +267,7 @@ class ChessResNet(nn.Module):
         self,
         board_tensor: torch.Tensor,
         color_to_move: torch.Tensor,
-        temperature: float = 1.0
+        temperature: float = 1.0,
     ) -> torch.Tensor:
         """
         Get move probabilities.
@@ -276,7 +282,7 @@ class ChessResNet(nn.Module):
         """
         with torch.no_grad():
             outputs = self.forward(board_tensor, color_to_move)
-            logits = outputs['move_logits']
+            logits = outputs["move_logits"]
 
             if temperature != 1.0:
                 logits = logits / temperature
@@ -284,9 +290,7 @@ class ChessResNet(nn.Module):
             return torch.softmax(logits, dim=-1)
 
     def get_best_move(
-        self,
-        board_tensor: torch.Tensor,
-        color_to_move: torch.Tensor
+        self, board_tensor: torch.Tensor, color_to_move: torch.Tensor
     ) -> torch.Tensor:
         """
         Get the best move index.

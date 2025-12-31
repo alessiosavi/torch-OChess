@@ -5,9 +5,10 @@ Provides various residual block implementations used in
 AlphaZero-style architectures.
 """
 
+from typing import Optional
+
 import torch
 import torch.nn as nn
-from typing import Optional
 
 
 class ResidualBlock(nn.Module):
@@ -21,12 +22,7 @@ class ResidualBlock(nn.Module):
     AlphaZero and similar chess networks.
     """
 
-    def __init__(
-        self,
-        channels: int,
-        kernel_size: int = 3,
-        dropout: float = 0.0
-    ):
+    def __init__(self, channels: int, kernel_size: int = 3, dropout: float = 0.0):
         """
         Initialize residual block.
 
@@ -40,18 +36,12 @@ class ResidualBlock(nn.Module):
         padding = kernel_size // 2
 
         self.conv1 = nn.Conv2d(
-            channels, channels,
-            kernel_size=kernel_size,
-            padding=padding,
-            bias=False
+            channels, channels, kernel_size=kernel_size, padding=padding, bias=False
         )
         self.bn1 = nn.BatchNorm2d(channels)
 
         self.conv2 = nn.Conv2d(
-            channels, channels,
-            kernel_size=kernel_size,
-            padding=padding,
-            bias=False
+            channels, channels, kernel_size=kernel_size, padding=padding, bias=False
         )
         self.bn2 = nn.BatchNorm2d(channels)
 
@@ -100,10 +90,7 @@ class BottleneckBlock(nn.Module):
     """
 
     def __init__(
-        self,
-        channels: int,
-        bottleneck_ratio: float = 0.25,
-        dropout: float = 0.0
+        self, channels: int, bottleneck_ratio: float = 0.25, dropout: float = 0.0
     ):
         """
         Initialize bottleneck block.
@@ -123,8 +110,11 @@ class BottleneckBlock(nn.Module):
 
         # Process
         self.conv2 = nn.Conv2d(
-            bottleneck_channels, bottleneck_channels,
-            kernel_size=3, padding=1, bias=False
+            bottleneck_channels,
+            bottleneck_channels,
+            kernel_size=3,
+            padding=1,
+            bias=False,
         )
         self.bn2 = nn.BatchNorm2d(bottleneck_channels)
 
@@ -190,7 +180,7 @@ class SEBlock(nn.Module):
             nn.Linear(channels, channels // reduction, bias=False),
             nn.ReLU(inplace=True),
             nn.Linear(channels // reduction, channels, bias=False),
-            nn.Sigmoid()
+            nn.Sigmoid(),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -228,7 +218,7 @@ class SEResidualBlock(nn.Module):
         channels: int,
         kernel_size: int = 3,
         se_reduction: int = 16,
-        dropout: float = 0.0
+        dropout: float = 0.0,
     ):
         """
         Initialize SE residual block.
@@ -244,18 +234,12 @@ class SEResidualBlock(nn.Module):
         padding = kernel_size // 2
 
         self.conv1 = nn.Conv2d(
-            channels, channels,
-            kernel_size=kernel_size,
-            padding=padding,
-            bias=False
+            channels, channels, kernel_size=kernel_size, padding=padding, bias=False
         )
         self.bn1 = nn.BatchNorm2d(channels)
 
         self.conv2 = nn.Conv2d(
-            channels, channels,
-            kernel_size=kernel_size,
-            padding=padding,
-            bias=False
+            channels, channels, kernel_size=kernel_size, padding=padding, bias=False
         )
         self.bn2 = nn.BatchNorm2d(channels)
 
@@ -307,7 +291,7 @@ class ResidualTower(nn.Module):
         channels: int,
         num_blocks: int,
         block_type: str = "basic",
-        dropout: float = 0.0
+        dropout: float = 0.0,
     ):
         """
         Initialize residual tower.

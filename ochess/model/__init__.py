@@ -11,9 +11,9 @@ All models share the same interface:
     - Output: move logits, score, capture, outcome predictions
 """
 
+from ochess.model.chess_hybrid import ChessHybrid
 from ochess.model.chess_resnet import ChessResNet
 from ochess.model.chess_transformer import ChessTransformer
-from ochess.model.chess_hybrid import ChessHybrid
 from ochess.model.losses import ChessLoss
 
 __all__ = [

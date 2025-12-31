@@ -10,10 +10,11 @@ Provides multi-task loss functions that combine:
 The losses are weighted to balance the different tasks.
 """
 
+from typing import Dict, Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Dict, Optional
 
 
 class MoveLoss(nn.Module):
@@ -33,11 +34,7 @@ class MoveLoss(nn.Module):
         super().__init__()
         self.ce = nn.CrossEntropyLoss(label_smoothing=label_smoothing)
 
-    def forward(
-        self,
-        logits: torch.Tensor,
-        targets: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         """
         Compute move prediction loss.
 
@@ -77,7 +74,7 @@ class ScoreLoss(nn.Module):
         self,
         predicted: torch.Tensor,
         target: torch.Tensor,
-        weights: Optional[torch.Tensor] = None
+        weights: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
         """
         Compute score prediction loss.
@@ -94,7 +91,9 @@ class ScoreLoss(nn.Module):
 
         if weights is not None:
             # Weighted loss
-            loss = F.huber_loss(predicted, target, reduction='none', delta=self.huber.delta)
+            loss = F.huber_loss(
+                predicted, target, reduction="none", delta=self.huber.delta
+            )
             loss = (loss * weights).sum() / weights.sum()
         else:
             loss = self.huber(predicted, target)
@@ -113,11 +112,7 @@ class CaptureLoss(nn.Module):
         super().__init__()
         self.ce = nn.CrossEntropyLoss()
 
-    def forward(
-        self,
-        logits: torch.Tensor,
-        targets: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         """
         Compute capture classification loss.
 
@@ -146,11 +141,7 @@ class OutcomeLoss(nn.Module):
         super().__init__()
         self.ce = nn.CrossEntropyLoss()
 
-    def forward(
-        self,
-        logits: torch.Tensor,
-        targets: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         """
         Compute outcome prediction loss.
 
@@ -189,7 +180,7 @@ class ChessLoss(nn.Module):
         capture_weight: float = 1.0,
         outcome_weight: float = 1.0,
         label_smoothing: float = 0.0,
-        score_delta: float = 2.0
+        score_delta: float = 2.0,
     ):
         """
         Initialize combined loss.
@@ -218,7 +209,7 @@ class ChessLoss(nn.Module):
         self,
         outputs: Dict[str, torch.Tensor],
         targets: Dict[str, torch.Tensor],
-        return_components: bool = False
+        return_components: bool = False,
     ) -> torch.Tensor:
         """
         Compute combined loss.
@@ -240,35 +231,35 @@ class ChessLoss(nn.Module):
             Scalar total loss (or dict if return_components=True)
         """
         # Move loss
-        move_l = self.move_loss(outputs['move_logits'], targets['target_move'])
+        move_l = self.move_loss(outputs["move_logits"], targets["target_move"])
 
         # Score loss
-        score_l = self.score_loss(outputs['score'], targets['score'])
+        score_l = self.score_loss(outputs["score"], targets["score"])
 
         # Capture loss
-        capture_l = self.capture_loss(outputs['capture'], targets['is_capture'])
+        capture_l = self.capture_loss(outputs["capture"], targets["is_capture"])
 
         # Outcome loss (optional)
-        if 'outcome' in targets and targets['outcome'] is not None:
-            outcome_l = self.outcome_loss(outputs['outcome'], targets['outcome'])
+        if "outcome" in targets and targets["outcome"] is not None:
+            outcome_l = self.outcome_loss(outputs["outcome"], targets["outcome"])
         else:
             outcome_l = torch.tensor(0.0, device=move_l.device)
 
         # Weighted combination
         total_loss = (
-            self.move_weight * move_l +
-            self.score_weight * score_l +
-            self.capture_weight * capture_l +
-            self.outcome_weight * outcome_l
+            self.move_weight * move_l
+            + self.score_weight * score_l
+            + self.capture_weight * capture_l
+            + self.outcome_weight * outcome_l
         )
 
         if return_components:
             return {
-                'total': total_loss,
-                'move': move_l,
-                'score': score_l,
-                'capture': capture_l,
-                'outcome': outcome_l
+                "total": total_loss,
+                "move": move_l,
+                "score": score_l,
+                "capture": capture_l,
+                "outcome": outcome_l,
             }
 
         return total_loss
@@ -292,9 +283,7 @@ class ContrastiveLoss(nn.Module):
         self.margin = margin
 
     def forward(
-        self,
-        good_move_logits: torch.Tensor,
-        bad_move_logits: torch.Tensor
+        self, good_move_logits: torch.Tensor, bad_move_logits: torch.Tensor
     ) -> torch.Tensor:
         """
         Compute contrastive loss.
@@ -323,11 +312,7 @@ class FocalLoss(nn.Module):
     Down-weights well-classified examples to focus on hard cases.
     """
 
-    def __init__(
-        self,
-        gamma: float = 2.0,
-        alpha: Optional[torch.Tensor] = None
-    ):
+    def __init__(self, gamma: float = 2.0, alpha: Optional[torch.Tensor] = None):
         """
         Initialize focal loss.
 
@@ -339,11 +324,7 @@ class FocalLoss(nn.Module):
         self.gamma = gamma
         self.alpha = alpha
 
-    def forward(
-        self,
-        logits: torch.Tensor,
-        targets: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         """
         Compute focal loss.
 
@@ -354,7 +335,7 @@ class FocalLoss(nn.Module):
         Returns:
             Scalar loss value
         """
-        ce_loss = F.cross_entropy(logits, targets, reduction='none')
+        ce_loss = F.cross_entropy(logits, targets, reduction="none")
         pt = torch.exp(-ce_loss)
 
         focal_loss = ((1 - pt) ** self.gamma) * ce_loss

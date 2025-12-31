@@ -2,6 +2,7 @@
 
 import pytest
 import torch
+
 from ochess.data.fen_parser import FenParser
 
 
@@ -27,7 +28,7 @@ class TestFenParser:
         # Check black pieces
         assert tensor[0, 4] == 12  # Black king at e8
         assert tensor[0, 3] == 11  # Black queen at d8
-        assert tensor[1, 0] == 7   # Black pawn at a7
+        assert tensor[1, 0] == 7  # Black pawn at a7
 
     def test_empty_board(self, parser):
         """Test parsing empty board."""

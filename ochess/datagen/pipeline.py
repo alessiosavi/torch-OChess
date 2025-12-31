@@ -11,23 +11,21 @@ Pipeline steps:
 4. Save to efficient parquet format
 """
 
+import json
+import logging
+import random
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Any, Dict, Generator, List, Optional
+
 import chess
 import pandas as pd
-from pathlib import Path
-from dataclasses import dataclass, asdict, field
-from typing import List, Optional, Generator, Dict, Any
 from tqdm import tqdm
-import random
-import logging
-import json
 
-from ochess.datagen.stockfish_wrapper import StockfishWrapper, AnalysisResult
-from ochess.datagen.position_generator import (
-    PositionGenerator,
-    GeneratedPosition,
-    PositionType
-)
 from ochess.data.score_encoder import ScoreEncoder
+from ochess.datagen.position_generator import (GeneratedPosition,
+                                               PositionGenerator, PositionType)
+from ochess.datagen.stockfish_wrapper import AnalysisResult, StockfishWrapper
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +33,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class LabeledPosition:
     """A chess position with all training labels."""
+
     # Position
     fen: str
     white_to_move: bool
@@ -43,8 +42,8 @@ class LabeledPosition:
 
     # Best move (Stockfish)
     best_move_uci: str
-    score_cp: int              # Centipawns from White's perspective
-    score_normalized: float    # Normalized for training (side-to-move perspective)
+    score_cp: int  # Centipawns from White's perspective
+    score_normalized: float  # Normalized for training (side-to-move perspective)
 
     # Move properties
     is_capture: bool
@@ -95,7 +94,7 @@ class DataGenerationPipeline:
         stockfish_hash_mb: int = 256,
         include_bad_moves: bool = True,
         multipv: int = 3,
-        seed: Optional[int] = None
+        seed: Optional[int] = None,
     ):
         """
         Initialize the data generation pipeline.
@@ -130,7 +129,7 @@ class DataGenerationPipeline:
         output_name: str,
         generation_method: str = "mixed",
         batch_size: int = 100,
-        save_intermediate: bool = True
+        save_intermediate: bool = True,
     ) -> Path:
         """
         Generate a complete labeled dataset.
@@ -149,17 +148,17 @@ class DataGenerationPipeline:
 
         # Generate positions
         if generation_method == "random":
-            positions = list(self.position_generator.generate_random_game_positions(
-                num_positions
-            ))
+            positions = list(
+                self.position_generator.generate_random_game_positions(num_positions)
+            )
         elif generation_method == "openings":
-            positions = list(self.position_generator.generate_from_openings(
-                num_positions
-            ))
+            positions = list(
+                self.position_generator.generate_from_openings(num_positions)
+            )
         elif generation_method == "endgame":
-            positions = list(self.position_generator.generate_endgame_positions(
-                num_positions
-            ))
+            positions = list(
+                self.position_generator.generate_endgame_positions(num_positions)
+            )
         else:  # mixed
             positions = list(self.position_generator.generate_mixed(num_positions))
 
@@ -172,12 +171,12 @@ class DataGenerationPipeline:
         with StockfishWrapper(
             self.stockfish_path,
             threads=self.stockfish_threads,
-            hash_mb=self.stockfish_hash_mb
+            hash_mb=self.stockfish_hash_mb,
         ) as engine:
 
             # Process in batches with progress bar
             for i in tqdm(range(0, len(positions), batch_size), desc="Analyzing"):
-                batch = positions[i:i + batch_size]
+                batch = positions[i : i + batch_size]
                 labeled_batch = self._analyze_batch(engine, batch)
                 all_labeled.extend(labeled_batch)
 
@@ -200,9 +199,7 @@ class DataGenerationPipeline:
         return output_path
 
     def _analyze_batch(
-        self,
-        engine: StockfishWrapper,
-        positions: List[GeneratedPosition]
+        self, engine: StockfishWrapper, positions: List[GeneratedPosition]
     ) -> List[LabeledPosition]:
         """
         Analyze a batch of positions with Stockfish.
@@ -228,9 +225,7 @@ class DataGenerationPipeline:
         return labeled
 
     def _analyze_single(
-        self,
-        engine: StockfishWrapper,
-        pos: GeneratedPosition
+        self, engine: StockfishWrapper, pos: GeneratedPosition
     ) -> Optional[LabeledPosition]:
         """
         Analyze a single position.
@@ -252,7 +247,7 @@ class DataGenerationPipeline:
         results = engine.analyze(
             board,
             depth=self.analysis_depth,
-            multipv=self.multipv if self.include_bad_moves else 1
+            multipv=self.multipv if self.include_bad_moves else 1,
         )
 
         if not results or results[0].best_move is None:
@@ -263,8 +258,7 @@ class DataGenerationPipeline:
 
         # Get score normalized for side-to-move
         score_normalized = self.score_encoder.encode_from_centipawns(
-            best.score_cp,
-            pos.white_to_move
+            best.score_cp, pos.white_to_move
         )
 
         # Check move properties
@@ -303,14 +297,14 @@ class DataGenerationPipeline:
             bad_move_uci=bad_move,
             bad_move_score_cp=bad_score,
             source=pos.source,
-            game_id=pos.game_id
+            game_id=pos.game_id,
         )
 
     def _find_bad_move(
         self,
         engine: StockfishWrapper,
         board: chess.Board,
-        good_results: List[AnalysisResult]
+        good_results: List[AnalysisResult],
     ) -> tuple:
         """
         Find a bad move for contrastive learning.
@@ -341,11 +335,7 @@ class DataGenerationPipeline:
 
         return bad_move.uci(), bad_score
 
-    def _save_to_parquet(
-        self,
-        labeled: List[LabeledPosition],
-        path: Path
-    ) -> None:
+    def _save_to_parquet(self, labeled: List[LabeledPosition], path: Path) -> None:
         """Save labeled positions to parquet file."""
         # Convert to dict format (handle None values and lists)
         records = []
@@ -361,12 +351,18 @@ class DataGenerationPipeline:
                 "is_capture": pos.is_capture,
                 "is_check": pos.is_check,
                 "is_mate": pos.is_mate,
-                "alternative_moves": json.dumps(pos.alternative_moves) if pos.alternative_moves else None,
-                "alternative_scores": json.dumps(pos.alternative_scores) if pos.alternative_scores else None,
+                "alternative_moves": (
+                    json.dumps(pos.alternative_moves) if pos.alternative_moves else None
+                ),
+                "alternative_scores": (
+                    json.dumps(pos.alternative_scores)
+                    if pos.alternative_scores
+                    else None
+                ),
                 "bad_move_uci": pos.bad_move_uci,
                 "bad_move_score_cp": pos.bad_move_score_cp,
                 "source": pos.source,
-                "game_id": pos.game_id
+                "game_id": pos.game_id,
             }
             records.append(record)
 
@@ -374,10 +370,7 @@ class DataGenerationPipeline:
         df.to_parquet(path, compression="zstd", index=False)
 
     def _save_metadata(
-        self,
-        output_name: str,
-        num_positions: int,
-        generation_method: str
+        self, output_name: str, num_positions: int, generation_method: str
     ) -> None:
         """Save dataset metadata."""
         metadata = {
@@ -387,7 +380,7 @@ class DataGenerationPipeline:
             "analysis_depth": self.analysis_depth,
             "include_bad_moves": self.include_bad_moves,
             "multipv": self.multipv,
-            "seed": self.seed
+            "seed": self.seed,
         }
 
         metadata_path = self.output_dir / f"{output_name}_metadata.json"
@@ -400,7 +393,7 @@ def generate_training_data(
     output_dir: str = "datasets",
     num_positions: int = 10000,
     output_name: str = "train_data",
-    seed: Optional[int] = 42
+    seed: Optional[int] = 42,
 ) -> Path:
     """
     Convenience function to generate training data.
@@ -416,12 +409,9 @@ def generate_training_data(
         Path to generated parquet file
     """
     pipeline = DataGenerationPipeline(
-        stockfish_path=stockfish_path,
-        output_dir=output_dir,
-        seed=seed
+        stockfish_path=stockfish_path, output_dir=output_dir, seed=seed
     )
 
     return pipeline.generate_dataset(
-        num_positions=num_positions,
-        output_name=output_name
+        num_positions=num_positions, output_name=output_name
     )

@@ -7,8 +7,9 @@ Provides tools to evaluate trained models:
     - Metrics: Move accuracy, win rate, etc.
 """
 
-from ochess.evaluation.stockfish_eval import StockfishEvaluator, GameResult, GameRecord
 from ochess.evaluation.metrics import compute_accuracy, compute_win_rate
+from ochess.evaluation.stockfish_eval import (GameRecord, GameResult,
+                                              StockfishEvaluator)
 
 __all__ = [
     "StockfishEvaluator",

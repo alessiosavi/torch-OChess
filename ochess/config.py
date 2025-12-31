@@ -6,13 +6,15 @@ Provides centralized configuration for all modules.
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional, List
+from typing import List, Optional
+
 import yaml
 
 
 @dataclass
 class DataConfig:
     """Configuration for data processing."""
+
     sequence_length: int = 5  # Number of past positions to consider
     cache_dir: str = "cache"
 
@@ -20,6 +22,7 @@ class DataConfig:
 @dataclass
 class DataGenConfig:
     """Configuration for data generation."""
+
     stockfish_path: str = "/usr/local/bin/stockfish"
     stockfish_threads: int = 4
     stockfish_hash_mb: int = 256
@@ -33,6 +36,7 @@ class DataGenConfig:
 @dataclass
 class ModelConfig:
     """Configuration for neural network models."""
+
     # Embedding dimensions
     piece_embed_dim: int = 64
     position_embed_dim: int = 64
@@ -55,6 +59,7 @@ class ModelConfig:
 @dataclass
 class TrainingConfig:
     """Configuration for training."""
+
     # Optimization
     learning_rate: float = 1e-3
     weight_decay: float = 1e-4
@@ -83,6 +88,7 @@ class TrainingConfig:
 @dataclass
 class EvaluationConfig:
     """Configuration for evaluation."""
+
     stockfish_path: str = "/usr/local/bin/stockfish"
     num_games: int = 100
     stockfish_levels: List[int] = field(default_factory=lambda: [1, 5, 10, 15, 20])
@@ -92,6 +98,7 @@ class EvaluationConfig:
 @dataclass
 class Config:
     """Master configuration combining all sub-configs."""
+
     data: DataConfig = field(default_factory=DataConfig)
     datagen: DataGenConfig = field(default_factory=DataGenConfig)
     model: ModelConfig = field(default_factory=ModelConfig)

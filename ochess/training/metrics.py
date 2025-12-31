@@ -2,8 +2,9 @@
 Training metrics for chess neural networks.
 """
 
-import torch
 from typing import Dict, Optional
+
+import torch
 
 
 class AccuracyMetric:
@@ -17,7 +18,9 @@ class AccuracyMetric:
         self.total = 0
 
     def update(self, predictions: torch.Tensor, targets: torch.Tensor):
-        pred_indices = predictions.argmax(dim=-1) if predictions.dim() > 1 else predictions
+        pred_indices = (
+            predictions.argmax(dim=-1) if predictions.dim() > 1 else predictions
+        )
         target_indices = targets.argmax(dim=-1) if targets.dim() > 1 else targets
 
         self.correct += (pred_indices == target_indices).sum().item()
@@ -28,8 +31,7 @@ class AccuracyMetric:
 
 
 def compute_move_accuracy(
-    outputs: Dict[str, torch.Tensor],
-    targets: Dict[str, torch.Tensor]
+    outputs: Dict[str, torch.Tensor], targets: Dict[str, torch.Tensor]
 ) -> float:
     """
     Compute move prediction accuracy.
@@ -41,8 +43,8 @@ def compute_move_accuracy(
     Returns:
         Accuracy as float
     """
-    pred = outputs['move_logits'].argmax(dim=-1)
-    target = targets['target_move']
+    pred = outputs["move_logits"].argmax(dim=-1)
+    target = targets["target_move"]
 
     correct = (pred == target).sum().item()
     total = target.size(0)
@@ -51,9 +53,7 @@ def compute_move_accuracy(
 
 
 def compute_top_k_accuracy(
-    logits: torch.Tensor,
-    targets: torch.Tensor,
-    k: int = 5
+    logits: torch.Tensor, targets: torch.Tensor, k: int = 5
 ) -> float:
     """
     Compute top-k accuracy.

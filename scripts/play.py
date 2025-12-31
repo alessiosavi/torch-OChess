@@ -3,7 +3,7 @@
 Play against a trained chess model.
 
 Usage:
-    python scripts/play.py --model checkpoints/best_model.pt --color white
+    python scripts/play.py --model checkpoints/best_model.pt --model-type hybrid --color white
 """
 
 import argparse
@@ -13,63 +13,53 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-import torch
 from ochess.play.cli_interface import CLIInterface
+from ochess.utils import get_available_device, load_model
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Play chess against trained model"
-    )
+    parser = argparse.ArgumentParser(description="Play chess against trained model")
 
     parser.add_argument(
-        "--model",
+        "--model", type=str, required=True, help="Path to trained model checkpoint"
+    )
+    parser.add_argument(
+        "--model-type",
         type=str,
+        choices=["resnet", "transformer", "hybrid"],
         required=True,
-        help="Path to trained model"
+        help="Model architecture type (resnet, transformer, hybrid)",
     )
     parser.add_argument(
         "--device",
         type=str,
         default="cuda",
-        help="Device for inference"
+        help="Device for inference (cuda, cpu, mps)",
     )
     parser.add_argument(
         "--color",
         type=str,
         choices=["white", "black"],
         default="white",
-        help="Your color (white or black)"
+        help="Your color (white or black)",
     )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Verbose output"
-    )
+    parser.add_argument("--verbose", action="store_true", help="Verbose output")
 
     args = parser.parse_args()
 
     # Setup logging
     level = logging.DEBUG if args.verbose else logging.WARNING
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s - %(levelname)s - %(message)s"
-    )
+    logging.basicConfig(level=level, format="%(asctime)s - %(levelname)s - %(message)s")
 
     # Check device
-    if args.device == "cuda" and not torch.cuda.is_available():
-        print("CUDA not available, using CPU")
-        args.device = "cpu"
+    device = get_available_device(args.device)
 
     # Load model
-    print(f"Loading model from {args.model}...")
-    model = torch.load(args.model, map_location=args.device)
-    if hasattr(model, 'eval'):
-        model.eval()
+    model = load_model(args.model, args.model_type, device)
 
     # Start game
     human_white = args.color == "white"
-    interface = CLIInterface(model, args.device)
+    interface = CLIInterface(model, device)
     interface.start_game(human_white)
 
 

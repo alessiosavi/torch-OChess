@@ -15,20 +15,24 @@ This is a balanced approach that's faster than pure transformer
 but more expressive than pure ResNet.
 """
 
+from dataclasses import dataclass
+from typing import Dict, Optional
+
 import torch
 import torch.nn as nn
-from typing import Dict, Optional
-from dataclasses import dataclass
 
-from ochess.model.components.embeddings import PieceEmbedding, PositionalEmbedding, ColorEmbedding
-from ochess.model.components.residual import ResidualBlock, ResidualTower
 from ochess.model.components.attention import SelfAttention, TransformerBlock
-from ochess.model.components.heads import MoveHead, ScoreHead, CaptureHead, OutcomeHead
+from ochess.model.components.embeddings import (ColorEmbedding, PieceEmbedding,
+                                                PositionalEmbedding)
+from ochess.model.components.heads import (CaptureHead, MoveHead, OutcomeHead,
+                                           ScoreHead)
+from ochess.model.components.residual import ResidualBlock, ResidualTower
 
 
 @dataclass
 class ChessHybridConfig:
     """Configuration for ChessHybrid."""
+
     # Embeddings
     piece_embed_dim: int = 64
     position_embed_dim: int = 64
@@ -94,7 +98,9 @@ class ChessHybrid(nn.Module):
         self.color_embed = ColorEmbedding(config.hidden_dim)
 
         # Input projection
-        self.input_conv = nn.Conv2d(embed_dim, config.hidden_dim, kernel_size=3, padding=1, bias=False)
+        self.input_conv = nn.Conv2d(
+            embed_dim, config.hidden_dim, kernel_size=3, padding=1, bias=False
+        )
         self.input_bn = nn.BatchNorm2d(config.hidden_dim)
 
         # ResNet backbone (fewer blocks than pure ResNet)
@@ -102,20 +108,22 @@ class ChessHybrid(nn.Module):
             channels=config.hidden_dim,
             num_blocks=config.num_residual_blocks,
             block_type="basic",
-            dropout=config.dropout
+            dropout=config.dropout,
         )
 
         # Attention layers on flattened features
         # Each position becomes a token
-        self.attention_layers = nn.ModuleList([
-            TransformerBlock(
-                embed_dim=config.hidden_dim,
-                num_heads=config.num_heads,
-                mlp_ratio=2.0,  # Smaller MLP for efficiency
-                dropout=config.attention_dropout
-            )
-            for _ in range(config.num_attention_layers)
-        ])
+        self.attention_layers = nn.ModuleList(
+            [
+                TransformerBlock(
+                    embed_dim=config.hidden_dim,
+                    num_heads=config.num_heads,
+                    mlp_ratio=2.0,  # Smaller MLP for efficiency
+                    dropout=config.attention_dropout,
+                )
+                for _ in range(config.num_attention_layers)
+            ]
+        )
 
         # Position embeddings for attention (64 squares)
         self.attn_pos_embed = nn.Parameter(torch.zeros(1, 64, config.hidden_dim))
@@ -126,7 +134,7 @@ class ChessHybrid(nn.Module):
                 config.hidden_dim,
                 num_heads=config.num_heads,
                 dropout=config.attention_dropout,
-                batch_first=True
+                batch_first=True,
             )
             self.temporal_norm = nn.LayerNorm(config.hidden_dim)
         else:
@@ -149,7 +157,7 @@ class ChessHybrid(nn.Module):
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
             elif isinstance(m, nn.BatchNorm2d):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
@@ -162,7 +170,7 @@ class ChessHybrid(nn.Module):
         self,
         board_tensor: torch.Tensor,
         color_to_move: torch.Tensor,
-        return_features: bool = False
+        return_features: bool = False,
     ) -> Dict[str, torch.Tensor]:
         """
         Forward pass.
@@ -188,7 +196,7 @@ class ChessHybrid(nn.Module):
 
         # Get embeddings
         piece_emb = self.piece_embed(board_tensor)  # [B, T, 8, 8, piece_dim]
-        pos_emb = self.pos_embed(board_tensor)       # [8, 8, pos_dim]
+        pos_emb = self.pos_embed(board_tensor)  # [8, 8, pos_dim]
         pos_emb = pos_emb.unsqueeze(0).unsqueeze(0).expand(B, T, -1, -1, -1)
 
         x = torch.cat([piece_emb, pos_emb], dim=-1)  # [B, T, 8, 8, embed_dim]
@@ -243,28 +251,26 @@ class ChessHybrid(nn.Module):
 
         # Output heads
         outputs = {
-            'move_logits': self.move_head(x_spatial_2d),
-            'score': self.score_head(x_spatial_2d),
-            'capture': self.capture_head(x_spatial_2d),
-            'outcome': self.outcome_head(x_spatial_2d)
+            "move_logits": self.move_head(x_spatial_2d),
+            "score": self.score_head(x_spatial_2d),
+            "capture": self.capture_head(x_spatial_2d),
+            "outcome": self.outcome_head(x_spatial_2d),
         }
 
         if return_features:
-            outputs['features'] = x_spatial_2d
-            outputs['temporal_features'] = x_temporal
+            outputs["features"] = x_spatial_2d
+            outputs["temporal_features"] = x_temporal
 
         return outputs
 
     def _flip_boards_for_black(
-        self,
-        boards: torch.Tensor,
-        colors: torch.Tensor
+        self, boards: torch.Tensor, colors: torch.Tensor
     ) -> torch.Tensor:
         """Flip boards when Black to move."""
         B, T, H, W = boards.shape
         result = boards.clone()
 
-        black_mask = (colors == 1)
+        black_mask = colors == 1
 
         for b in range(B):
             for t in range(T):
@@ -284,20 +290,18 @@ class ChessHybrid(nn.Module):
         self,
         board_tensor: torch.Tensor,
         color_to_move: torch.Tensor,
-        temperature: float = 1.0
+        temperature: float = 1.0,
     ) -> torch.Tensor:
         """Get move probabilities."""
         with torch.no_grad():
             outputs = self.forward(board_tensor, color_to_move)
-            logits = outputs['move_logits']
+            logits = outputs["move_logits"]
             if temperature != 1.0:
                 logits = logits / temperature
             return torch.softmax(logits, dim=-1)
 
     def get_best_move(
-        self,
-        board_tensor: torch.Tensor,
-        color_to_move: torch.Tensor
+        self, board_tensor: torch.Tensor, color_to_move: torch.Tensor
     ) -> torch.Tensor:
         """Get best move index."""
         probs = self.predict_move(board_tensor, color_to_move, temperature=0.01)
@@ -314,10 +318,7 @@ class ChessHybrid(nn.Module):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
 
 
-def create_model(
-    model_type: str = "hybrid",
-    **kwargs
-) -> nn.Module:
+def create_model(model_type: str = "hybrid", **kwargs) -> nn.Module:
     """
     Factory function to create chess models.
 
@@ -329,7 +330,8 @@ def create_model(
         Initialized model
     """
     from ochess.model.chess_resnet import ChessResNet, ChessResNetConfig
-    from ochess.model.chess_transformer import ChessTransformer, ChessTransformerConfig
+    from ochess.model.chess_transformer import (ChessTransformer,
+                                                ChessTransformerConfig)
 
     if model_type == "resnet":
         config = ChessResNetConfig(**kwargs) if kwargs else None

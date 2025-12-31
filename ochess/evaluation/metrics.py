@@ -2,8 +2,10 @@
 Evaluation metrics for chess models.
 """
 
+from typing import Dict, List
+
 import torch
-from typing import List, Dict
+
 from ochess.evaluation.stockfish_eval import GameRecord, GameResult
 
 
@@ -16,8 +18,7 @@ def compute_accuracy(predictions: torch.Tensor, targets: torch.Tensor) -> float:
 def compute_win_rate(records: List[GameRecord]) -> float:
     """Compute win rate from game records."""
     wins = sum(
-        1 for r in records
-        if (r.result == GameResult.WHITE_WIN) == r.model_color
+        1 for r in records if (r.result == GameResult.WHITE_WIN) == r.model_color
     )
     return wins / len(records) if records else 0.0
 

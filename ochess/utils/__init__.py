@@ -1,26 +1,20 @@
 """
-Utility functions for Torch o'Chess.
+Utility functions for torch-OChess.
 
-Provides:
-    - Debug helpers for model inspection
-    - Visualization tools for training progress
-    - Logging configuration
+Provides shared utilities for model loading, device handling, and other common operations.
 """
 
-from ochess.utils.debug import (
-    inspect_model,
-    print_model_summary,
-    check_gradients,
-)
-from ochess.utils.visualization import (
-    plot_training_curves,
-    plot_move_distribution,
-)
+from ochess.utils.device import get_available_device, get_device_info
+from ochess.utils.model_loader import (create_model,
+                                       infer_model_config_from_state_dict,
+                                       load_model)
 
 __all__ = [
-    "inspect_model",
-    "print_model_summary",
-    "check_gradients",
-    "plot_training_curves",
-    "plot_move_distribution",
+    # Model loading
+    "create_model",
+    "infer_model_config_from_state_dict",
+    "load_model",
+    # Device utilities
+    "get_available_device",
+    "get_device_info",
 ]

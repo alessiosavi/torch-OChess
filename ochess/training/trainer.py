@@ -8,16 +8,17 @@ Provides:
     - Metrics tracking
 """
 
-import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader
-from torch.cuda.amp import GradScaler, autocast
-from pathlib import Path
-from typing import Dict, Optional, List, Callable
-from dataclasses import dataclass, field
-import time
 import json
 import logging
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Callable, Dict, List, Optional
+
+import torch
+import torch.nn as nn
+from torch.cuda.amp import GradScaler, autocast
+from torch.utils.data import DataLoader
 
 from ochess.model.losses import ChessLoss
 
@@ -27,6 +28,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TrainingConfig:
     """Configuration for training."""
+
     # Optimization
     learning_rate: float = 1e-3
     weight_decay: float = 1e-4
@@ -82,7 +84,7 @@ class Trainer:
         config: TrainingConfig,
         train_loader: DataLoader,
         val_loader: Optional[DataLoader] = None,
-        callbacks: Optional[List[Callable]] = None
+        callbacks: Optional[List[Callable]] = None,
     ):
         """
         Initialize trainer.
@@ -108,7 +110,7 @@ class Trainer:
         self.optimizer = torch.optim.AdamW(
             model.parameters(),
             lr=config.learning_rate,
-            weight_decay=config.weight_decay
+            weight_decay=config.weight_decay,
         )
 
         # Learning rate scheduler
@@ -119,7 +121,7 @@ class Trainer:
             move_weight=config.move_loss_weight,
             score_weight=config.score_loss_weight,
             capture_weight=config.capture_loss_weight,
-            outcome_weight=config.outcome_loss_weight
+            outcome_weight=config.outcome_loss_weight,
         )
 
         # Mixed precision
@@ -132,37 +134,30 @@ class Trainer:
         # State tracking
         self.current_epoch = 0
         self.global_step = 0
-        self.best_val_loss = float('inf')
+        self.best_val_loss = float("inf")
         self.epochs_without_improvement = 0
 
         # Metrics history
         self.history = {
-            'train_loss': [],
-            'val_loss': [],
-            'move_accuracy': [],
-            'learning_rate': []
+            "train_loss": [],
+            "val_loss": [],
+            "move_accuracy": [],
+            "learning_rate": [],
         }
 
     def _create_scheduler(self):
         """Create learning rate scheduler."""
         if self.config.lr_scheduler == "cosine":
             return torch.optim.lr_scheduler.CosineAnnealingLR(
-                self.optimizer,
-                T_max=self.config.epochs,
-                eta_min=self.config.lr_min
+                self.optimizer, T_max=self.config.epochs, eta_min=self.config.lr_min
             )
         elif self.config.lr_scheduler == "step":
             return torch.optim.lr_scheduler.StepLR(
-                self.optimizer,
-                step_size=30,
-                gamma=0.1
+                self.optimizer, step_size=30, gamma=0.1
             )
         elif self.config.lr_scheduler == "plateau":
             return torch.optim.lr_scheduler.ReduceLROnPlateau(
-                self.optimizer,
-                mode='min',
-                factor=0.5,
-                patience=5
+                self.optimizer, mode="min", factor=0.5, patience=5
             )
         else:
             return None
@@ -191,17 +186,21 @@ class Trainer:
                 val_metrics = self._validate_epoch()
 
             # Update history
-            self.history['train_loss'].append(train_metrics['loss'])
-            self.history['move_accuracy'].append(train_metrics['move_accuracy'])
-            self.history['learning_rate'].append(self._get_lr())
+            self.history["train_loss"].append(train_metrics["loss"])
+            self.history["move_accuracy"].append(train_metrics["move_accuracy"])
+            self.history["learning_rate"].append(self._get_lr())
 
             if val_metrics:
-                self.history['val_loss'].append(val_metrics['loss'])
+                self.history["val_loss"].append(val_metrics["loss"])
 
             # Learning rate scheduling
             if self.scheduler is not None:
-                if isinstance(self.scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
-                    metric = val_metrics['loss'] if val_metrics else train_metrics['loss']
+                if isinstance(
+                    self.scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau
+                ):
+                    metric = (
+                        val_metrics["loss"] if val_metrics else train_metrics["loss"]
+                    )
                     self.scheduler.step(metric)
                 else:
                     self.scheduler.step()
@@ -243,7 +242,7 @@ class Trainer:
 
             if self.config.use_amp and self.scaler is not None:
                 with autocast():
-                    outputs = self.model(batch['boards'], batch['colors'])
+                    outputs = self.model(batch["boards"], batch["colors"])
                     loss = self.criterion(outputs, batch)
 
                 # Backward with scaling
@@ -253,30 +252,28 @@ class Trainer:
                 if self.config.gradient_clip > 0:
                     self.scaler.unscale_(self.optimizer)
                     torch.nn.utils.clip_grad_norm_(
-                        self.model.parameters(),
-                        self.config.gradient_clip
+                        self.model.parameters(), self.config.gradient_clip
                     )
 
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
             else:
-                outputs = self.model(batch['boards'], batch['colors'])
+                outputs = self.model(batch["boards"], batch["colors"])
                 loss = self.criterion(outputs, batch)
                 loss.backward()
 
                 if self.config.gradient_clip > 0:
                     torch.nn.utils.clip_grad_norm_(
-                        self.model.parameters(),
-                        self.config.gradient_clip
+                        self.model.parameters(), self.config.gradient_clip
                     )
 
                 self.optimizer.step()
 
             # Metrics
             total_loss += loss.item()
-            pred_moves = outputs['move_logits'].argmax(dim=-1)
-            correct_moves += (pred_moves == batch['target_move']).sum().item()
-            total_moves += batch['target_move'].size(0)
+            pred_moves = outputs["move_logits"].argmax(dim=-1)
+            correct_moves += (pred_moves == batch["target_move"]).sum().item()
+            total_moves += batch["target_move"].size(0)
             num_batches += 1
             self.global_step += 1
 
@@ -287,8 +284,8 @@ class Trainer:
                     f"Loss={loss.item():.4f}"
                 )
         return {
-            'loss': total_loss / num_batches,
-            'move_accuracy': correct_moves / total_moves if total_moves > 0 else 0
+            "loss": total_loss / num_batches,
+            "move_accuracy": correct_moves / total_moves if total_moves > 0 else 0,
         }
 
     def _validate_epoch(self) -> Dict:
@@ -305,21 +302,21 @@ class Trainer:
 
                 if self.config.use_amp:
                     with autocast():
-                        outputs = self.model(batch['boards'], batch['colors'])
+                        outputs = self.model(batch["boards"], batch["colors"])
                         loss = self.criterion(outputs, batch)
                 else:
-                    outputs = self.model(batch['boards'], batch['colors'])
+                    outputs = self.model(batch["boards"], batch["colors"])
                     loss = self.criterion(outputs, batch)
 
                 total_loss += loss.item()
-                pred_moves = outputs['move_logits'].argmax(dim=-1)
-                correct_moves += (pred_moves == batch['target_move']).sum().item()
-                total_moves += batch['target_move'].size(0)
+                pred_moves = outputs["move_logits"].argmax(dim=-1)
+                correct_moves += (pred_moves == batch["target_move"]).sum().item()
+                total_moves += batch["target_move"].size(0)
                 num_batches += 1
 
         return {
-            'loss': total_loss / num_batches if num_batches > 0 else 0,
-            'move_accuracy': correct_moves / total_moves if total_moves > 0 else 0
+            "loss": total_loss / num_batches if num_batches > 0 else 0,
+            "move_accuracy": correct_moves / total_moves if total_moves > 0 else 0,
         }
 
     def _to_device(self, batch: Dict) -> Dict:
@@ -331,14 +328,14 @@ class Trainer:
 
     def _get_lr(self) -> float:
         """Get current learning rate."""
-        return self.optimizer.param_groups[0]['lr']
+        return self.optimizer.param_groups[0]["lr"]
 
     def _checkpoint(self, epoch: int, val_metrics: Optional[Dict]):
         """Save checkpoint."""
         # Determine if this is the best model
         is_best = False
         if val_metrics is not None:
-            current_metric = val_metrics.get('loss', float('inf'))
+            current_metric = val_metrics.get("loss", float("inf"))
             if current_metric < self.best_val_loss:
                 self.best_val_loss = current_metric
                 is_best = True
@@ -362,12 +359,7 @@ class Trainer:
 
         return self.epochs_without_improvement >= self.config.early_stopping_patience
 
-    def _log_epoch(
-        self,
-        epoch: int,
-        train_metrics: Dict,
-        val_metrics: Optional[Dict]
-    ):
+    def _log_epoch(self, epoch: int, train_metrics: Dict, val_metrics: Optional[Dict]):
         """Log epoch results."""
         msg = f"Epoch {epoch + 1}/{self.config.epochs}"
         msg += f" | Train Loss: {train_metrics['loss']:.4f}"
@@ -387,20 +379,20 @@ class Trainer:
         path = self.checkpoint_dir / filename
 
         checkpoint = {
-            'epoch': self.current_epoch,
-            'global_step': self.global_step,
-            'model_state_dict': self.model.state_dict(),
-            'optimizer_state_dict': self.optimizer.state_dict(),
-            'best_val_loss': self.best_val_loss,
-            'history': self.history,
-            'config': self.config
+            "epoch": self.current_epoch,
+            "global_step": self.global_step,
+            "model_state_dict": self.model.state_dict(),
+            "optimizer_state_dict": self.optimizer.state_dict(),
+            "best_val_loss": self.best_val_loss,
+            "history": self.history,
+            "config": self.config,
         }
 
         if self.scheduler is not None:
-            checkpoint['scheduler_state_dict'] = self.scheduler.state_dict()
+            checkpoint["scheduler_state_dict"] = self.scheduler.state_dict()
 
         if self.scaler is not None:
-            checkpoint['scaler_state_dict'] = self.scaler.state_dict()
+            checkpoint["scaler_state_dict"] = self.scaler.state_dict()
 
         torch.save(checkpoint, path)
         logger.info(f"Saved checkpoint: {path}")
@@ -409,17 +401,17 @@ class Trainer:
         """Load training checkpoint."""
         checkpoint = torch.load(path, map_location=self.device)
 
-        self.model.load_state_dict(checkpoint['model_state_dict'])
-        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        self.current_epoch = checkpoint['epoch'] + 1
-        self.global_step = checkpoint['global_step']
-        self.best_val_loss = checkpoint['best_val_loss']
-        self.history = checkpoint['history']
+        self.model.load_state_dict(checkpoint["model_state_dict"])
+        self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        self.current_epoch = checkpoint["epoch"] + 1
+        self.global_step = checkpoint["global_step"]
+        self.best_val_loss = checkpoint["best_val_loss"]
+        self.history = checkpoint["history"]
 
-        if self.scheduler is not None and 'scheduler_state_dict' in checkpoint:
-            self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+        if self.scheduler is not None and "scheduler_state_dict" in checkpoint:
+            self.scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
 
-        if self.scaler is not None and 'scaler_state_dict' in checkpoint:
-            self.scaler.load_state_dict(checkpoint['scaler_state_dict'])
+        if self.scaler is not None and "scaler_state_dict" in checkpoint:
+            self.scaler.load_state_dict(checkpoint["scaler_state_dict"])
 
         logger.info(f"Loaded checkpoint from epoch {checkpoint['epoch']}")

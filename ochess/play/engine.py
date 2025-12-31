@@ -2,10 +2,11 @@
 Chess engine wrapper for model inference.
 """
 
+from typing import List, Optional, Tuple
+
 import chess
 import torch
 import torch.nn as nn
-from typing import Optional, Tuple, List
 
 from ochess.data.fen_parser import FenParser
 from ochess.data.move_encoder import MoveEncoder
@@ -19,10 +20,7 @@ class ChessEngine:
     """
 
     def __init__(
-        self,
-        model: nn.Module,
-        device: str = "cuda",
-        sequence_length: int = 5
+        self, model: nn.Module, device: str = "cuda", sequence_length: int = 5
     ):
         """
         Initialize chess engine.
@@ -72,9 +70,7 @@ class ChessEngine:
         return False
 
     def get_move(
-        self,
-        board: Optional[chess.Board] = None,
-        temperature: float = 0.1
+        self, board: Optional[chess.Board] = None, temperature: float = 0.1
     ) -> Tuple[chess.Move, bool]:
         """
         Get best move for current position.
@@ -91,26 +87,25 @@ class ChessEngine:
 
         # Prepare input sequence
         current_fen = board.fen()
-        fens = self.history[-(self.sequence_length - 1):] + [current_fen]
+        fens = self.history[-(self.sequence_length - 1) :] + [current_fen]
         while len(fens) < self.sequence_length:
             fens = [current_fen] + fens
 
         # Convert to tensors
-        boards = torch.stack([
-            self.fen_parser.to_tensor(fen) for fen in fens
-        ]).unsqueeze(0)
+        boards = torch.stack(
+            [self.fen_parser.to_tensor(fen) for fen in fens]
+        ).unsqueeze(0)
 
-        colors = torch.tensor([
-            0 if self.fen_parser.is_white_to_move(fen) else 1
-            for fen in fens
-        ]).unsqueeze(0)
+        colors = torch.tensor(
+            [0 if self.fen_parser.is_white_to_move(fen) else 1 for fen in fens]
+        ).unsqueeze(0)
 
         # Inference
         with torch.no_grad():
             boards = boards.to(self.device)
             colors = colors.to(self.device)
             outputs = self.model(boards, colors)
-            logits = outputs['move_logits'][0]
+            logits = outputs["move_logits"][0]
 
             if temperature != 1.0:
                 logits = logits / temperature
@@ -120,9 +115,7 @@ class ChessEngine:
         return move, was_illegal
 
     def _select_legal_move(
-        self,
-        board: chess.Board,
-        logits: torch.Tensor
+        self, board: chess.Board, logits: torch.Tensor
     ) -> Tuple[chess.Move, bool]:
         """Select best legal move from logits."""
         legal_moves = list(board.legal_moves)
@@ -132,7 +125,7 @@ class ChessEngine:
 
         # Find best legal move
         best_move = None
-        best_score = float('-inf')
+        best_score = float("-inf")
 
         for move in legal_moves:
             idx = self.move_encoder.encode_move(move)
@@ -168,19 +161,18 @@ class ChessEngine:
         current_fen = board.fen()
         fens = [current_fen] * self.sequence_length
 
-        boards = torch.stack([
-            self.fen_parser.to_tensor(fen) for fen in fens
-        ]).unsqueeze(0)
+        boards = torch.stack(
+            [self.fen_parser.to_tensor(fen) for fen in fens]
+        ).unsqueeze(0)
 
-        colors = torch.tensor([
-            0 if self.fen_parser.is_white_to_move(fen) else 1
-            for fen in fens
-        ]).unsqueeze(0)
+        colors = torch.tensor(
+            [0 if self.fen_parser.is_white_to_move(fen) else 1 for fen in fens]
+        ).unsqueeze(0)
 
         with torch.no_grad():
             boards = boards.to(self.device)
             colors = colors.to(self.device)
             outputs = self.model(boards, colors)
-            score = outputs['score'][0].item()
+            score = outputs["score"][0].item()
 
         return score

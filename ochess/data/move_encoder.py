@@ -16,9 +16,10 @@ Square numbering (python-chess convention):
     a8=56, b8=57, ..., h8=63
 """
 
-import torch
+from typing import List, Optional, Tuple
+
 import chess
-from typing import List, Tuple, Optional
+import torch
 
 
 class MoveEncoder:
@@ -98,9 +99,7 @@ class MoveEncoder:
         return move.from_square * self.NUM_SQUARES + move.to_square
 
     def decode_to_move(
-        self,
-        index: int,
-        board: Optional[chess.Board] = None
+        self, index: int, board: Optional[chess.Board] = None
     ) -> chess.Move:
         """
         Decode index to a chess.Move object.
@@ -193,11 +192,7 @@ class MoveEncoder:
             mask[idx] = True
         return mask
 
-    def filter_to_legal(
-        self,
-        logits: torch.Tensor,
-        board: chess.Board
-    ) -> torch.Tensor:
+    def filter_to_legal(self, logits: torch.Tensor, board: chess.Board) -> torch.Tensor:
         """
         Mask logits to only allow legal moves.
 

@@ -2,9 +2,11 @@
 
 import pytest
 import torch
-from ochess.model.chess_resnet import ChessResNet, ChessResNetConfig
-from ochess.model.chess_transformer import ChessTransformer, ChessTransformerConfig
+
 from ochess.model.chess_hybrid import ChessHybrid, ChessHybridConfig
+from ochess.model.chess_resnet import ChessResNet, ChessResNetConfig
+from ochess.model.chess_transformer import (ChessTransformer,
+                                            ChessTransformerConfig)
 
 
 class TestChessResNet:
@@ -25,10 +27,10 @@ class TestChessResNet:
 
         outputs = model(boards, colors)
 
-        assert outputs['move_logits'].shape == (batch_size, 4096)
-        assert outputs['score'].shape == (batch_size, 1)
-        assert outputs['capture'].shape == (batch_size, 2)
-        assert outputs['outcome'].shape == (batch_size, 3)
+        assert outputs["move_logits"].shape == (batch_size, 4096)
+        assert outputs["score"].shape == (batch_size, 1)
+        assert outputs["capture"].shape == (batch_size, 2)
+        assert outputs["outcome"].shape == (batch_size, 3)
 
     def test_single_position(self, model):
         """Test with single position (no sequence)."""
@@ -37,7 +39,7 @@ class TestChessResNet:
 
         outputs = model(boards, colors)
 
-        assert outputs['move_logits'].shape == (2, 4096)
+        assert outputs["move_logits"].shape == (2, 4096)
 
     def test_return_features(self, model):
         """Test returning intermediate features."""
@@ -46,7 +48,7 @@ class TestChessResNet:
 
         outputs = model(boards, colors, return_features=True)
 
-        assert 'features' in outputs
+        assert "features" in outputs
 
     def test_predict_move(self, model):
         """Test move prediction method."""
@@ -77,8 +79,8 @@ class TestChessTransformer:
 
         outputs = model(boards, colors)
 
-        assert outputs['move_logits'].shape == (batch_size, 4096)
-        assert outputs['score'].shape == (batch_size, 1)
+        assert outputs["move_logits"].shape == (batch_size, 4096)
+        assert outputs["score"].shape == (batch_size, 1)
 
 
 class TestChessHybrid:
@@ -90,7 +92,7 @@ class TestChessHybrid:
             num_residual_blocks=2,
             num_attention_layers=1,
             sequence_length=3,
-            hidden_dim=128
+            hidden_dim=128,
         )
         return ChessHybrid(config)
 
@@ -104,8 +106,8 @@ class TestChessHybrid:
 
         outputs = model(boards, colors)
 
-        assert outputs['move_logits'].shape == (batch_size, 4096)
-        assert outputs['score'].shape == (batch_size, 1)
+        assert outputs["move_logits"].shape == (batch_size, 4096)
+        assert outputs["score"].shape == (batch_size, 1)
 
 
 class TestBoardFlipping:
@@ -130,4 +132,4 @@ class TestBoardFlipping:
         black_out = model(boards.clone(), black_colors)
 
         # Outputs should be different due to perspective change
-        assert not torch.allclose(white_out['move_logits'], black_out['move_logits'])
+        assert not torch.allclose(white_out["move_logits"], black_out["move_logits"])

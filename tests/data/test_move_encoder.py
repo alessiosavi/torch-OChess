@@ -1,8 +1,9 @@
 """Tests for move encoder."""
 
+import chess
 import pytest
 import torch
-import chess
+
 from ochess.data.move_encoder import MoveEncoder
 
 

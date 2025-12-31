@@ -2,15 +2,17 @@
 Evaluate chess model by playing against Stockfish.
 """
 
+import logging
+import random
+from dataclasses import dataclass
+from enum import Enum
+from typing import Dict, List, Optional
+
 import chess
 import chess.engine
 import torch
 import torch.nn as nn
-from typing import List, Optional, Dict
-from dataclasses import dataclass
-from enum import Enum
-import random
-import logging
+from tqdm.auto import tqdm
 
 from ochess.data.fen_parser import FenParser
 from ochess.data.move_encoder import MoveEncoder
@@ -27,6 +29,7 @@ class GameResult(Enum):
 @dataclass
 class GameRecord:
     """Record of a single game."""
+
     result: GameResult
     moves: List[str]
     termination: str
@@ -46,7 +49,7 @@ class StockfishEvaluator:
         model: nn.Module,
         stockfish_path: str,
         device: str = "cuda",
-        sequence_length: int = 5
+        sequence_length: int = 5,
     ):
         self.model = model
         self.model.eval()
@@ -61,7 +64,7 @@ class StockfishEvaluator:
         self,
         num_games: int = 100,
         stockfish_levels: List[int] = [1, 5, 10, 15, 20],
-        model_plays_white: Optional[bool] = None
+        model_plays_white: Optional[bool] = None,
     ) -> Dict:
         """
         Play a match of games against Stockfish.
@@ -76,10 +79,18 @@ class StockfishEvaluator:
         """
         results = {level: [] for level in stockfish_levels}
 
-        for level in stockfish_levels:
+        for level in tqdm(
+            stockfish_levels, position=0, desc=f"Evaluating against stockfish ..."
+        ):
             logger.info(f"Playing {num_games} games vs Stockfish level {level}")
 
-            for game_num in range(num_games):
+            for game_num in tqdm(
+                range(num_games),
+                position=1,
+                desc=f"Stockfish level: {level}",
+                total=num_games,
+                leave=False,
+            ):
                 if model_plays_white is None:
                     model_white = game_num % 2 == 0
                 else:
@@ -97,9 +108,7 @@ class StockfishEvaluator:
         return results
 
     def _play_single_game(
-        self,
-        stockfish_level: int,
-        model_plays_white: bool
+        self, stockfish_level: int, model_plays_white: bool
     ) -> GameRecord:
         """Play a single game."""
         board = chess.Board()
@@ -130,53 +139,54 @@ class StockfishEvaluator:
         return GameRecord(
             result=result,
             moves=moves,
-            termination=str(board.outcome().termination) if board.outcome() else "unknown",
+            termination=(
+                str(board.outcome().termination) if board.outcome() else "unknown"
+            ),
             model_color=model_plays_white,
             stockfish_level=stockfish_level,
             model_illegal_moves=illegal_moves,
-            total_moves=len(moves)
+            total_moves=len(moves),
         )
 
-    def _get_model_move(
-        self,
-        board: chess.Board,
-        history: List[str]
-    ) -> tuple:
+    def _get_model_move(self, board: chess.Board, history: List[str]) -> tuple:
         """Get move from model."""
         # Prepare input
-        fens = history[-self.sequence_length:] if len(history) >= self.sequence_length else history
+        fens = (
+            history[-self.sequence_length :]
+            if len(history) >= self.sequence_length
+            else history
+        )
         while len(fens) < self.sequence_length:
             fens = [board.fen()] + fens
 
         # Include current position
-        fens = fens[-(self.sequence_length-1):] + [board.fen()]
+        fens = fens[-(self.sequence_length - 1) :] + [board.fen()]
 
         # Convert to tensors
-        boards = torch.stack([
-            self.fen_parser.to_tensor(fen) for fen in fens
-        ]).unsqueeze(0)  # [1, seq, 8, 8]
+        boards = torch.stack(
+            [self.fen_parser.to_tensor(fen) for fen in fens]
+        ).unsqueeze(
+            0
+        )  # [1, seq, 8, 8]
 
-        colors = torch.tensor([
-            0 if self.fen_parser.is_white_to_move(fen) else 1
-            for fen in fens
-        ]).unsqueeze(0)  # [1, seq]
+        colors = torch.tensor(
+            [0 if self.fen_parser.is_white_to_move(fen) else 1 for fen in fens]
+        ).unsqueeze(
+            0
+        )  # [1, seq]
 
         # Model inference
         with torch.no_grad():
             boards = boards.to(self.device)
             colors = colors.to(self.device)
             outputs = self.model(boards, colors)
-            logits = outputs['move_logits'][0]
+            logits = outputs["move_logits"][0]
 
         # Get best legal move
         move, was_illegal = self._select_legal_move(board, logits)
         return move, was_illegal
 
-    def _select_legal_move(
-        self,
-        board: chess.Board,
-        logits: torch.Tensor
-    ) -> tuple:
+    def _select_legal_move(self, board: chess.Board, logits: torch.Tensor) -> tuple:
         """Select best legal move from logits."""
         legal_moves = list(board.legal_moves)
 
@@ -185,7 +195,7 @@ class StockfishEvaluator:
 
         # Score each legal move
         best_move = None
-        best_score = float('-inf')
+        best_score = float("-inf")
 
         for move in legal_moves:
             idx = self.move_encoder.encode_move(move)
@@ -228,11 +238,11 @@ class StockfishEvaluator:
                 losses += 1
 
         return {
-            'wins': wins,
-            'draws': draws,
-            'losses': losses,
-            'win_rate': wins / len(records) if records else 0,
-            'total_illegal_moves': sum(r.model_illegal_moves for r in records)
+            "wins": wins,
+            "draws": draws,
+            "losses": losses,
+            "win_rate": wins / len(records) if records else 0,
+            "total_illegal_moves": sum(r.model_illegal_moves for r in records),
         }
 
 
@@ -245,7 +255,6 @@ def compute_accuracy(predictions: torch.Tensor, targets: torch.Tensor) -> float:
 def compute_win_rate(records: List[GameRecord]) -> float:
     """Compute win rate from game records."""
     wins = sum(
-        1 for r in records
-        if (r.result == GameResult.WHITE_WIN) == r.model_color
+        1 for r in records if (r.result == GameResult.WHITE_WIN) == r.model_color
     )
     return wins / len(records) if records else 0.0

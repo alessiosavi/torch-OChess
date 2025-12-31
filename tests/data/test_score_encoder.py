@@ -1,6 +1,7 @@
 """Tests for score encoder - THE CRITICAL FIX."""
 
 import pytest
+
 from ochess.data.score_encoder import ScoreEncoder
 
 
