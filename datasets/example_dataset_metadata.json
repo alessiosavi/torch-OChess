@@ -1,0 +1,9 @@
+{
+  "name": "example_dataset",
+  "num_positions": 1000,
+  "generation_method": "mixed",
+  "analysis_depth": 1,
+  "include_bad_moves": true,
+  "multipv": 3,
+  "seed": 42
+}

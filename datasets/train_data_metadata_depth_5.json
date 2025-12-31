@@ -1,0 +1,9 @@
+{
+  "name": "train_data",
+  "num_positions": 10000,
+  "generation_method": "mixed",
+  "analysis_depth": 5,
+  "include_bad_moves": true,
+  "multipv": 3,
+  "seed": 42
+}
