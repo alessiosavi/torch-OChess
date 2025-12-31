@@ -1,66 +1,91 @@
-# Torch o'Chess
+# Torch o'Chess Documentation
 
-### *A Baseline Chess Engine for Experimenting with Neural Networks*
+Welcome to the comprehensive documentation for Torch o'Chess, a PyTorch-based chess engine for neural network experimentation.
+
+## Documentation Index
+
+### Getting Started
+
+- [Quick Start Guide](docs/guides/quickstart.md) - Get up and running in 5 minutes
+- [Installation](docs/guides/installation.md) - Detailed installation instructions
+- [Tutorial](docs/guides/tutorial.md) - Step-by-step walkthrough
+
+### Architecture
+
+- [System Architecture](docs/architecture.md) - High-level system design
+- [The Critical Fix](docs/critical-fix.md) - Understanding the score encoding fix
+
+### Neural Network Models
+
+- [Models Overview](docs/models/overview.md) - Comparison of all three architectures
+- [ChessResNet](docs/models/resnet.md) - AlphaZero-inspired residual network
+- [ChessTransformer](docs/models/transformer.md) - Self-attention architecture
+- [ChessHybrid](docs/models/hybrid.md) - CNN + Attention hybrid
+
+### API Reference
+
+- [Data Module](docs/api/data.md) - FEN parsing, move/score encoding, datasets
+- [Data Generation](docs/api/datagen.md) - Stockfish wrapper, position generation
+- [Models](docs/api/models.md) - Neural network classes and configurations
+- [Training](docs/api/training.md) - Trainer, callbacks, metrics
+- [Evaluation](docs/api/evaluation.md) - Stockfish evaluation
+- [Play](docs/api/play.md) - Engine and CLI interface
+
+### Guides
+
+- [Data Generation Guide](docs/guides/data-generation.md) - Creating training datasets
+- [Training Guide](docs/guides/training.md) - Training models effectively
+- [Evaluation Guide](docs/guides/evaluation.md) - Testing against Stockfish
+- [Playing Guide](docs/guides/playing.md) - Human vs model games
+
+### Reference
+
+- [Configuration Reference](docs/configuration.md) - All configuration options
+- [CLI Reference](docs/cli-reference.md) - Command-line interface
+- [Troubleshooting](docs/troubleshooting.md) - Common issues and solutions
+- [Contributing](docs/contributing.md) - How to contribute
 
 ---
 
-## Overview
+## Quick Links
 
-Torch o'Chess is an open-source chess engine built in PyTorch, designed for experimenting with neural networks in chess.
-It's not a complete product but serves as a baseline for future research and improvements.
-The core implementation resides in a single notebook, making it easy to follow, modify, and extend.
-
-## Key Features
-
-- **Custom Dataset**: Easily load your own chess datasets for training and evaluation trough FEN notation.
-- **Game Turns Batch Creation**: Generate batches of game turns, utilizing sequences of N previous moves.
-- **Duplicate Filtering**: Filter out duplicate batches to maintain clean training data.
-- **FEN Parsing**: Convert FEN notation to tensors (and back).
-- **Debugging & Utilities**: Utilities for printing and debugging chessboards, matrices, and tensors.
-- **Conv3D Baseline Engine**: A foundational 3D convolutional neural network architecture tailored for chess move prediction.
-- **Training Loop**: Simple but functional training loop, that leverage 2 different loss on 4 different output.
-- **Accuracy Reporting**: Basic accuracy tracking (not deeply optimized, but functional for experimentation).
-- **Turn Filtering**: Methods to filter turns where at least one prediction differs from expected (used for debug common error type of the network).
-- **Stockfish Integration**: Debug and analyze network performance by playing against Stockfish.
-
-## Motivation
-
-Torch o'Chess is a personal project intended as a starting point for exploring how neural networks can be applied to chess.
-The goal of this initial release is to track experiment, allowing others to explore different architectures and strategies.
-This is not a polished product but a flexible foundation to grow and improve.
-
-## Installation
-
-To use Torch o'Chess, simply clone the repository and install the required dependencies. The project is organized as a single Jupyter notebook, which you can run locally.
+### Generate Data
 
 ```bash
-git clone https://github.com/alessiosavi/torch-oChess.git
-cd torchoChess
-pip install -r requirements.txt
+python scripts/generate_data.py --num-positions 10000
 ```
 
-## How to Use
+### Train Model
 
-- Load your dataset using the provided dataset loader functions.
-- Customize the network architecture or modify the training loop as needed.
-- Train the model on different dataset, and evaluate its performance.
-- Use Stockfish to test and debug your model’s predictions.
+```bash
+python scripts/train.py --data datasets/train_data.parquet --model resnet
+```
 
-## Future Plans
+### Play Against Model
 
-This project is just the beginning, and there are several areas for future development:
-- Experimenting with different network architectures.
-- Adding advanced evaluation metrics for chess move prediction.
-  - [ ] Invalid move
-  - [ ] Missed move
-  - [ ] No-sense move
-- Standardize experiment run
-- Standardize dataset generation
+```bash
+python scripts/play.py --model checkpoints/best_model.pt
+```
 
-## Contributing
+---
 
-Contributions are welcome! Feel free to fork the repository, submit pull requests, or open issues if you encounter any bugs or have suggestions for improvement.
+## Project Overview
+
+Torch o'Chess is a complete chess neural network system featuring:
+
+| Feature | Description |
+|---------|-------------|
+| **Data Generation** | Stockfish-powered position labeling with good/bad moves |
+| **Three Architectures** | ResNet, Transformer, and Hybrid models |
+| **Proper Scoring** | Side-to-move perspective (the critical fix) |
+| **Multi-task Learning** | Predicts moves, scores, captures, and outcomes |
+| **Human Play** | Terminal interface for playing against the model |
+| **Stockfish Evaluation** | Automated testing at various skill levels |
+
+## Version
+
+Current version: 0.1.0
 
 ## License
 
-Torch o'Chess is licensed under the MIT License.
+MIT License - See LICENSE file for details.
